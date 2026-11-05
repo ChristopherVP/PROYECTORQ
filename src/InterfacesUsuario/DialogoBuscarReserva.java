@@ -91,7 +91,7 @@ public class DialogoBuscarReserva extends JDialog {
                 if (this.empresaFiltro == null || (r.getEmpresa() != null && r.getEmpresa().getIdEmpresa().equals(this.empresaFiltro.getIdEmpresa()))) {
                     String pasajero = r.getPasajero() != null ? r.getPasajero().getNombre() : "N/A";
                     String fecha = r.getFechaReserva() != null ? r.getFechaReserva().toString() : "";
-                    
+
                     if (r.getIdReserva().toUpperCase().contains(txt) || pasajero.toUpperCase().contains(txt) || fecha.contains(txt)) {
                         this.modelo.addRow(new Object[]{r.getIdReserva(), pasajero, r.getViaje() != null ? r.getViaje().getIdViaje() : "N/A", fecha, r.getEstado()});
                     }

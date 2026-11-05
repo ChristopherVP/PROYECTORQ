@@ -22,6 +22,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import objetosNegocio.Empresa;
+import objetosNegocio.Rol;
 import objetosNegocio.Usuario;
 import persistencia.Empresas;
 
@@ -44,7 +45,7 @@ public class PantallaPrincipal extends JFrame {
     }
 
     private void initComponents() {
-        this.setTitle("Sistema de Transporte Interprovincial - Usuario: " + this.usuarioActual.getIdUsuario());
+        this.setTitle("RQ - Sistema de Transporte Interprovincial - " + this.usuarioActual.getNombre() + " (" + this.usuarioActual.getTipo() + ")");
         this.setDefaultCloseOperation(3);
         this.setSize(1200, 700);
         this.setExtendedState(6);
@@ -63,6 +64,12 @@ public class PantallaPrincipal extends JFrame {
         this.tabbedPane.addTab("Viajes", (Icon)null, this.createViajesPanel(), "Gestión de Viajes");
         this.tabbedPane.addTab("Reservas", (Icon)null, this.createReservasPanel(), "Gestión de Reservas");
         this.tabbedPane.addTab("Facturas", (Icon)null, this.createFacturasPanel(), "Gestión de Facturas");
+        if (this.usuarioActual.getRol() == Rol.ADMINISTRADOR) {
+            this.tabbedPane.addTab("Novedades", (Icon)null, new InterfacesUsuario.PanelNovedadesAdmin(this.usuarioActual), "Reportes enviados por los conductores");
+            if (this.usuarioActual.esSuperAdministrador()) {
+                this.tabbedPane.addTab("Recargas", (Icon)null, new InterfacesUsuario.PanelRecargasAdmin(this.usuarioActual), "Aprobación de recargas de pasajeros");
+            }
+        }
         this.tabbedPane.setBackgroundAt(0, new Color(220, 220, 220));
         this.tabbedPane.setBackgroundAt(1, new Color(230, 230, 250));
         this.tabbedPane.setBackgroundAt(2, new Color(255, 215, 0));
@@ -241,6 +248,15 @@ public class PantallaPrincipal extends JFrame {
         this.menuBar.add(menuConsultas);
         this.menuBar.add(menuReportes);
         this.menuBar.add(menuAyuda);
+        JMenu menuCuenta = new JMenu("Cuenta");
+        menuCuenta.setMnemonic(78);
+        JMenuItem itemPerfil = new JMenuItem("Mi perfil");
+        itemPerfil.addActionListener((e) -> (new InterfacesUsuario.DialogoPerfil(this, this.usuarioActual, () -> { })).setVisible(true));
+        menuCuenta.add(itemPerfil);
+        JMenuItem itemCerrar = new JMenuItem("Cerrar sesión");
+        itemCerrar.addActionListener((e) -> InterfacesUsuario.Navegador.cerrarSesion(this));
+        menuCuenta.add(itemCerrar);
+        this.menuBar.add(menuCuenta);
         this.setJMenuBar(this.menuBar);
     }
 
@@ -308,16 +324,5 @@ public class PantallaPrincipal extends JFrame {
 
     private void mostrarAcercaDe() {
         JOptionPane.showMessageDialog(this, "Sistema de Transporte Interprovincial\nVersión 2.0\n\nSistema integral de gestión de transporte de pasajeros\nDesarrollado para la administración eficiente de buses,\nrutas, viajes, reservas y facturación.\n\n© 2026 - Todos los derechos reservados", "Acerca del Sistema", 1);
-    }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                Usuario usuario = new Usuario();
-                usuario.setIdUsuario("ADMIN");
-                usuario.setTipo("Administrador");
-                (new PantallaPrincipal(usuario)).setVisible(true);
-            }
-        });
     }
 }

@@ -120,11 +120,11 @@ public class PanelGestionPasajeros extends JPanel {
 
             for(Pasajero p : this.listaPasajerosCompleta) {
                 if (this.empresaFiltro == null || p.getEmpresa() != null && p.getEmpresa().getIdEmpresa().equals(this.empresaFiltro.getIdEmpresa())) {
-                    
+
                     if (!texto.isEmpty()) {
-                        boolean coincide = p.getNombre().toUpperCase().contains(texto) || 
-                                         p.getCedula().contains(texto) || 
-                                         p.getIdPasajero().toUpperCase().contains(texto);
+                        boolean coincide = p.getNombre().toUpperCase().contains(texto) ||
+                                p.getCedula().contains(texto) ||
+                                p.getIdPasajero().toUpperCase().contains(texto);
                         if (!coincide) {
                             continue;
                         }

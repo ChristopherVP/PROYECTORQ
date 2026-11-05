@@ -90,7 +90,7 @@ public class PanelGestionFacturas extends JPanel {
         btnEditar.addActionListener((e) -> this.editar());
         btnEliminar.addActionListener((e) -> this.eliminar());
         btnDetalles.addActionListener((e) -> this.verDetalles());
-        
+
         btnDetalles.setBackground(new Color(70, 130, 180));
         btnDetalles.setForeground(Color.WHITE);
         btnDetalles.setFont(new Font("Arial", 1, 12));
@@ -214,7 +214,7 @@ public class PanelGestionFacturas extends JPanel {
 
             for(Factura f : this.listaFacturasCompleta) {
                 if (this.empresaFiltro == null || f.getEmpresa() != null && f.getEmpresa().getIdEmpresa().equals(this.empresaFiltro.getIdEmpresa())) {
-                    
+
                     String idReserva = f.getReserva() != null ? f.getReserva().getIdReserva() : "";
                     String origen = mapaOrigenes.getOrDefault(idReserva, "N/A");
                     String destino = mapaDestinos.getOrDefault(idReserva, "N/A");
@@ -224,7 +224,7 @@ public class PanelGestionFacturas extends JPanel {
                         String datosCliente = f.getDatosPasajeroSnapshot() != null ? f.getDatosPasajeroSnapshot() : "";
                         String fechaEmisionStr = f.getFechaEmision() != null ? f.getFechaEmision().toString() : "";
                         String datosCompletos = (f.getIdFactura() + " " + datosCliente + " " + fechaEmisionStr + " " + origen + " " + destino).toUpperCase();
-                        
+
                         boolean coincide = true;
                         for (String palabra : palabrasClave) {
                             if (!datosCompletos.contains(palabra)) {

@@ -1,97 +1,126 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
-
 package InterfacesUsuario;
 
-import excepciones.PersistenciaException;
+import control.ControladorUsuarios;
+import control.ResultadoOperacion;
+import java.awt.BorderLayout;
+import java.awt.CardLayout;
+import java.awt.Dialog;
+import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
+import java.awt.Window;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JTextField;
-import objetosNegocio.Usuario;
-import persistencia.Usuarios;
 
+/** Recuperación de contraseña sin escribir el usuario: se identifica con la cédula y se verifica con la pregunta de seguridad. */
 public class PantallaRecuperarClave extends JDialog {
-    private JTextField txtUsuario;
-    private JButton btnBuscar;
-    private JButton btnCerrar;
+    private final ControladorUsuarios controlador = new ControladorUsuarios();
+    private final CardLayout pasos = new CardLayout();
+    private final JPanel contenedor = new JPanel(pasos);
+    private final JTextField txtCedula = Tema.campo(20);
+    private final JLabel lblPregunta = Tema.titulo(" ", 15f);
+    private final JTextField txtRespuesta = Tema.campo(20);
+    private final JPasswordField txtNueva = Tema.clave(20);
+    private final JPasswordField txtConfirmar = Tema.clave(20);
+    private final JLabel lblFortaleza = Tema.mensaje();
+    private final JLabel lblMensaje1 = Tema.mensaje();
+    private final JLabel lblMensaje2 = Tema.mensaje();
+    private String cedulaVerificada;
 
-    public PantallaRecuperarClave(JFrame padre) {
-        super(padre, "Recuperar Contraseña", true);
-        this.initComponents();
+    public PantallaRecuperarClave(Window padre) {
+        super(padre, "Recuperar contraseña", Dialog.ModalityType.APPLICATION_MODAL);
+        setIconImage(IconoRQ.crear(64));
+        setLayout(new BorderLayout());
+        add(Tema.encabezado("Recuperar contraseña", "No necesitas recordar tu usuario"), BorderLayout.NORTH);
+        contenedor.setBackground(Tema.FONDO);
+        contenedor.add(crearPaso1(), "paso1");
+        contenedor.add(crearPaso2(), "paso2");
+        add(contenedor, BorderLayout.CENTER);
+        setPreferredSize(new Dimension(520, 470));
+        pack();
+        setLocationRelativeTo(padre);
     }
 
-    private void initComponents() {
-        this.setSize(400, 250);
-        this.setLocationRelativeTo(this.getParent());
-        this.setResizable(false);
-        JPanel panel = new JPanel(new GridBagLayout());
-        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
-        gbc.fill = 2;
-        JLabel lblInstruccion = new JLabel("Ingrese su usuario para ver su contraseña:");
-        lblInstruccion.setFont(new Font("Arial", 0, 14));
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-        gbc.gridwidth = 2;
-        panel.add(lblInstruccion, gbc);
-        this.txtUsuario = new JTextField(20);
-        this.txtUsuario.setFont(new Font("Arial", 0, 14));
-        gbc.gridy = 1;
-        panel.add(this.txtUsuario, gbc);
-        JPanel panelBotones = new JPanel(new FlowLayout(1));
-        this.btnBuscar = new JButton("Buscar");
-        this.btnCerrar = new JButton("Cerrar");
-        this.btnBuscar.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                PantallaRecuperarClave.this.buscarClave();
-            }
-        });
-        this.btnCerrar.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                PantallaRecuperarClave.this.dispose();
-            }
-        });
-        panelBotones.add(this.btnBuscar);
-        panelBotones.add(this.btnCerrar);
-        gbc.gridy = 2;
-        panel.add(panelBotones, gbc);
-        this.add(panel);
+    private JPanel crearPaso1() {
+        JPanel p = new JPanel(new BorderLayout(0, 12));
+        p.setBackground(Tema.FONDO);
+        p.setBorder(BorderFactory.createEmptyBorder(24, 32, 24, 32));
+        p.add(Tema.nota(440, "<html><b>Paso 1 de 2.</b> Escribe la cédula con la que creaste tu cuenta. "
+                + "Te mostraremos tu pregunta de seguridad.</html>"), BorderLayout.NORTH);
+        JPanel f = Tema.panelFormulario();
+        Tema.fila(f, 0, "Cédula", txtCedula);
+        p.add(f, BorderLayout.CENTER);
+        JPanel sur = new JPanel(new BorderLayout(0, 8));
+        sur.setOpaque(false);
+        sur.add(lblMensaje1, BorderLayout.NORTH);
+        javax.swing.JButton continuar = Tema.boton("Continuar", true);
+        continuar.addActionListener(e -> verificarCedula());
+        getRootPane().setDefaultButton(continuar);
+        JPanel b = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        b.setOpaque(false);
+        b.add(continuar);
+        sur.add(b, BorderLayout.CENTER);
+        p.add(sur, BorderLayout.SOUTH);
+        return p;
     }
 
-    private void buscarClave() {
-        String idUsuario = this.txtUsuario.getText().trim();
-        if (idUsuario.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Ingrese un usuario");
-        } else {
-            try {
-                Usuarios usuarios = new Usuarios("usuarios.dat");
-                Usuario uBusqueda = new Usuario();
-                uBusqueda.setIdUsuario(idUsuario);
-                Usuario u = usuarios.obten(uBusqueda);
-                if (u != null) {
-                    JOptionPane.showMessageDialog(this, "Usuario encontrado.\nSu contraseña es: " + u.getContrasena(), "Recuperación Exitosa", 1);
-                } else {
-                    JOptionPane.showMessageDialog(this, "El usuario no existe en el sistema.", "Error", 0);
-                }
-            } catch (PersistenciaException e) {
-                JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
-            }
+    private JPanel crearPaso2() {
+        JPanel p = new JPanel(new BorderLayout(0, 10));
+        p.setBackground(Tema.FONDO);
+        p.setBorder(BorderFactory.createEmptyBorder(20, 32, 20, 32));
+        JPanel arriba = new JPanel(new BorderLayout(0, 6));
+        arriba.setOpaque(false);
+        arriba.add(Tema.nota(440, "<html><b>Paso 2 de 2.</b> Responde tu pregunta y elige una contraseña nueva.</html>"), BorderLayout.NORTH);
+        arriba.add(lblPregunta, BorderLayout.SOUTH);
+        p.add(arriba, BorderLayout.NORTH);
+        JPanel f = Tema.panelFormulario();
+        Tema.fila(f, 0, "Respuesta", txtRespuesta);
+        Tema.fila(f, 1, "Contraseña nueva", txtNueva);
+        Tema.fila(f, 2, "", lblFortaleza);
+        Tema.fila(f, 3, "Confirmar", txtConfirmar);
+        Tema.vincularFortaleza(txtNueva, lblFortaleza);
+        p.add(f, BorderLayout.CENTER);
+        JPanel sur = new JPanel(new BorderLayout(0, 8));
+        sur.setOpaque(false);
+        sur.add(lblMensaje2, BorderLayout.NORTH);
+        javax.swing.JButton atras = Tema.boton("Atrás", false);
+        atras.addActionListener(e -> pasos.show(contenedor, "paso1"));
+        javax.swing.JButton restablecer = Tema.boton("Restablecer contraseña", true);
+        restablecer.addActionListener(e -> restablecer());
+        JPanel b = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        b.setOpaque(false);
+        b.add(atras);
+        b.add(restablecer);
+        sur.add(b, BorderLayout.CENTER);
+        p.add(sur, BorderLayout.SOUTH);
+        return p;
+    }
 
+    private void verificarCedula() {
+        ResultadoOperacion r = controlador.obtenerPreguntaRecuperacion(txtCedula.getText());
+        if (!r.isExito()) {
+            Tema.mostrarMensaje(lblMensaje1, r.getMensaje(), false);
+            return;
         }
+        cedulaVerificada = txtCedula.getText().trim();
+        lblPregunta.setText("<html>" + String.valueOf(r.getDatos()).replace("<", "&lt;") + "</html>");
+        lblMensaje2.setText(" ");
+        pasos.show(contenedor, "paso2");
+        txtRespuesta.requestFocusInWindow();
+    }
+
+    private void restablecer() {
+        ResultadoOperacion r = controlador.restablecerContrasena(cedulaVerificada, txtRespuesta.getText(),
+                new String(txtNueva.getPassword()), new String(txtConfirmar.getPassword()));
+        if (!r.isExito()) {
+            Tema.mostrarMensaje(lblMensaje2, r.getMensaje(), false);
+            return;
+        }
+        Tema.info(this, r.getMensaje());
+        dispose();
     }
 }

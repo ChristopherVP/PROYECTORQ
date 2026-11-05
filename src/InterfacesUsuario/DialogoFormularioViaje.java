@@ -130,7 +130,7 @@ public class DialogoFormularioViaje extends JDialog {
         g.gridy = 1;
         p.add(new JLabel("Empresa: *"), g);
         g.gridx = 1;
-        
+
         JPanel pEmpresa = new JPanel(new BorderLayout(5, 0));
         this.txtEmpresa = new JTextField();
         this.txtEmpresa.setEditable(false);
@@ -144,7 +144,7 @@ public class DialogoFormularioViaje extends JDialog {
         g.gridy = 2;
         p.add(new JLabel("Bus: *"), g);
         g.gridx = 1;
-        
+
         JPanel pBus = new JPanel(new BorderLayout(5, 0));
         this.txtBus = new JTextField();
         this.txtBus.setEditable(false);
@@ -443,7 +443,7 @@ public class DialogoFormularioViaje extends JDialog {
             if (this.txtDiaSalida.getText().isEmpty() || this.txtMesSalida.getText().isEmpty() || this.txtAnioSalida.getText().isEmpty()) {
                 return;
             }
-            
+
             double distancia = this.rutaSeleccionadaObj.getDistancia();
             double tiempoEstimado = this.rutaSeleccionadaObj.getTiempoEstimado();
 

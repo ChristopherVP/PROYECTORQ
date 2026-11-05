@@ -115,7 +115,7 @@ public class PanelGestionEmpresas extends JPanel {
                     int okCxl = JOptionPane.showConfirmDialog(this, pf, "Ingrese contraseña de acceso para " + empresaSeleccionada.getNombre() + ":", 2, -1);
                     if (okCxl == 0) {
                         String password = new String(pf.getPassword());
-                        if (password.equals(this.usuarioActual.getContrasena())) {
+                        if (this.usuarioActual.validarContrasena(password)) {
                             Window parentWindow = SwingUtilities.getWindowAncestor(this);
                             if (parentWindow instanceof PantallaPrincipal) {
                                 ((PantallaPrincipal)parentWindow).desbloquearModulos(empresaSeleccionada);

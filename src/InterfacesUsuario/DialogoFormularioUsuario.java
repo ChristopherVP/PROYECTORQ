@@ -1,483 +1,192 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
-
 package InterfacesUsuario;
 
-import excepciones.PersistenciaException;
+import control.ControladorUsuarios;
+import control.ResultadoOperacion;
 import java.awt.BorderLayout;
-import java.awt.Color;
+import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
-import java.util.ArrayList;
+import java.awt.Window;
 import java.util.List;
 import javax.swing.BorderFactory;
-import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPasswordField;
+import javax.swing.JScrollPane;
 import javax.swing.JTextField;
-import javax.swing.SwingUtilities;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import objetosNegocio.Empresa;
 import objetosNegocio.Usuario;
-import objetosServicio.Fecha;
-import persistencia.Empresas;
-import persistencia.Usuarios;
 
+/**
+ * Alta y edición de cuentas administrativas desde dentro de una cuenta de administrador.
+ * Aquí es donde se crean más administradores y operadores.
+ */
 public class DialogoFormularioUsuario extends JDialog {
-    private JTextField txtId;
-    private JTextField txtNombre;
-    private JTextField txtCedula;
-    private JTextField txtPassword;
-    private JTextField txtEmail;
-    private JTextField txtTelefono;
-    private JComboBox<String> cmbTipo;
-    private JComboBox<String> cmbEmpresa;
-    private JComboBox<String> cmbEstado;
-    private JLabel lblFortaleza;
-    private Usuario usuario;
-    private boolean confirmado = false;
-    private List<Empresa> empresas;
-    private String tipoPredefinido;
-    private Empresa empresaPreseleccionada;
+    private static final class ItemEmpresa {
+        final String id;
+        final String texto;
 
-    public DialogoFormularioUsuario(JFrame padre, String titulo, Usuario u, String tipoPredefinido, Empresa empresaPreseleccionada) {
-        super(padre, titulo, true);
-        this.usuario = u;
-        this.tipoPredefinido = tipoPredefinido;
-        this.empresaPreseleccionada = empresaPreseleccionada;
-        this.cargarEmpresas();
-        this.initComponents();
-        if (u != null) {
-            this.cargar();
+        ItemEmpresa(String id, String texto) {
+            this.id = id;
+            this.texto = texto;
         }
 
+        @Override
+        public String toString() {
+            return texto;
+        }
     }
 
-    private void cargarEmpresas() {
-        try {
-            this.empresas = (new Empresas("empresas.dat")).lista();
-        } catch (PersistenciaException e) {
-            this.empresas = new ArrayList();
-            JOptionPane.showMessageDialog(this, "Error al cargar empresas: " + e.getMessage());
+    private final ControladorUsuarios controlador = new ControladorUsuarios();
+    private final Usuario actor;
+    private final Usuario editando;
+    private final Runnable alGuardar;
+
+    private final JTextField txtLogin = Tema.campo(22);
+    private final JTextField txtNombre = Tema.campo(22);
+    private final JTextField txtCedula = Tema.campo(22);
+    private final JPasswordField txtClave = Tema.clave(22);
+    private final JPasswordField txtConfirmar = Tema.clave(22);
+    private final JLabel lblFortaleza = Tema.mensaje();
+    private final JTextField txtEmail = Tema.campo(22);
+    private final JTextField txtTelefono = Tema.campo(22);
+    private final JComboBox<String> cmbRol = new JComboBox<>(new String[]{"Administrador", "Operador"});
+    private final JComboBox<ItemEmpresa> cmbEmpresa = new JComboBox<>();
+    private final JComboBox<String> cmbEstado = new JComboBox<>(new String[]{"ACTIVO", "INACTIVO", "PENDIENTE"});
+    private final JComboBox<String> cmbPregunta = new JComboBox<>(Tema.PREGUNTAS);
+    private final JTextField txtRespuesta = Tema.campo(22);
+    private final JLabel lblMensaje = Tema.mensaje();
+
+    public DialogoFormularioUsuario(Window padre, Usuario actor, Usuario editando, List<Empresa> empresas, Runnable alGuardar) {
+        super(padre, editando == null ? "Nuevo usuario" : "Editar usuario", Dialog.ModalityType.APPLICATION_MODAL);
+        this.actor = actor;
+        this.editando = editando;
+        this.alGuardar = alGuardar;
+        setIconImage(IconoRQ.crear(64));
+        setLayout(new BorderLayout());
+        add(Tema.encabezado(editando == null ? "Nuevo usuario" : "Editar usuario",
+                editando == null ? "Crea una cuenta de administrador u operador" : editando.getLogin() + " · " + editando.getTipo()), BorderLayout.NORTH);
+
+        cargarEmpresas(empresas);
+        cmbPregunta.setEditable(true);
+        cmbPregunta.setFont(Tema.fuente(Font.PLAIN, 13f));
+        cmbPregunta.setSelectedItem("");
+
+        JPanel f = Tema.panelFormulario();
+        int fila = 0;
+        Tema.fila(f, fila++, "Usuario *", txtLogin);
+        Tema.fila(f, fila++, "Nombre completo *", txtNombre);
+        Tema.fila(f, fila++, "Cédula *", txtCedula);
+        Tema.fila(f, fila++, editando == null ? "Contraseña *" : "Nueva contraseña", txtClave);
+        Tema.fila(f, fila++, "", lblFortaleza);
+        if (editando == null) {
+            Tema.fila(f, fila++, "Confirmar contraseña *", txtConfirmar);
         }
-
-    }
-
-    private void initComponents() {
-        this.setSize(500, 650);
-        this.setLocationRelativeTo(this.getParent());
-        JPanel p = new JPanel(new GridBagLayout());
-        p.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        GridBagConstraints g = new GridBagConstraints();
-        g.fill = 2;
-        g.insets = new Insets(8, 8, 8, 8);
-        int row = 0;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("ID Usuario:"), g);
-        g.gridx = 1;
-        this.txtId = new JTextField(15);
-        this.txtId.setEnabled(false);
-        this.txtId.setBackground(Color.LIGHT_GRAY);
-        this.txtId.setText("(Se generará automáticamente)");
-        p.add(this.txtId, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Nombre: *"), g);
-        g.gridx = 1;
-        this.txtNombre = new JTextField(15);
-        p.add(this.txtNombre, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Cédula: *"), g);
-        g.gridx = 1;
-        this.txtCedula = new JTextField(15);
-        this.agregarFiltroCedula(this.txtCedula);
-        p.add(this.txtCedula, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Contraseña: *"), g);
-        g.gridx = 1;
-        JPanel pPass = new JPanel(new BorderLayout(5, 0));
-        this.txtPassword = new JPasswordField(15);
-        this.txtPassword.getDocument().addDocumentListener(new DocumentListener() {
-            public void changedUpdate(DocumentEvent e) {
-                DialogoFormularioUsuario.this.validarFortaleza();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                DialogoFormularioUsuario.this.validarFortaleza();
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                DialogoFormularioUsuario.this.validarFortaleza();
-            }
-        });
-        pPass.add(this.txtPassword, "Center");
-        this.lblFortaleza = new JLabel("");
-        this.lblFortaleza.setFont(new Font("Arial", 1, 11));
-        pPass.add(this.lblFortaleza, "East");
-        p.add(pPass, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Email: *"), g);
-        g.gridx = 1;
-        this.txtEmail = new JTextField(15);
-        this.agregarFiltroEmail(this.txtEmail);
-        p.add(this.txtEmail, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Teléfono:"), g);
-        g.gridx = 1;
-        this.txtTelefono = new JTextField(15);
-        this.agregarFiltroTelefono(this.txtTelefono);
-        p.add(this.txtTelefono, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Tipo: *"), g);
-        g.gridx = 1;
-        this.cmbTipo = new JComboBox<>(new String[]{"Administrador", "Operador"});
-        p.add(this.cmbTipo, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Empresa: *"), g);
-        g.gridx = 1;
-        this.cmbEmpresa = new JComboBox<>();
-        this.cmbEmpresa.addItem("-- Seleccione Empresa --");
-
-        for(Empresa e : this.empresas) {
-            JComboBox var10000 = this.cmbEmpresa;
-            String var10001 = e.getIdEmpresa();
-            var10000.addItem(var10001 + " - " + e.getNombre());
-        }
-
-        p.add(this.cmbEmpresa, g);
-        if (this.empresaPreseleccionada != null) {
-            for(int i = 0; i < this.cmbEmpresa.getItemCount(); ++i) {
-                if (((String)this.cmbEmpresa.getItemAt(i)).startsWith(this.empresaPreseleccionada.getIdEmpresa())) {
-                    this.cmbEmpresa.setSelectedIndex(i);
-                    this.cmbEmpresa.setEnabled(false);
-                    break;
-                }
-            }
-        }
-
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        p.add(new JLabel("Estado: *"), g);
-        g.gridx = 1;
-        this.cmbEstado = new JComboBox<>(new String[]{"ACTIVO", "INACTIVO"});
-        p.add(this.cmbEstado, g);
-        ++row;
-        g.gridx = 0;
-        g.gridy = row;
-        g.gridwidth = 2;
-        JLabel lblNota = new JLabel("* Campos obligatorios");
-        lblNota.setFont(new Font("Arial", 2, 11));
-        lblNota.setForeground(Color.GRAY);
-        p.add(lblNota, g);
-        JPanel pBtn = new JPanel(new FlowLayout(1, 15, 10));
-        JButton btnGuardar = new JButton("Guardar");
-        btnGuardar.setPreferredSize(new Dimension(120, 35));
-        JButton btnCancelar = new JButton("Cancelar");
-        btnCancelar.setPreferredSize(new Dimension(120, 35));
-        btnGuardar.addActionListener((ex) -> this.guardar());
-        btnCancelar.addActionListener((ex) -> this.dispose());
-        pBtn.add(btnGuardar);
-        pBtn.add(btnCancelar);
-        this.add(p, "Center");
-        this.add(pBtn, "South");
-    }
-
-    private void cargar() {
-        this.txtId.setText(this.usuario.getIdUsuario());
-        this.txtNombre.setText(this.usuario.getNombre());
-        this.txtCedula.setText(this.usuario.getCedula());
-        if (this.txtPassword != null) {
-            this.txtPassword.setText(this.usuario.getContrasena());
-        }
-
-        this.txtEmail.setText(this.usuario.getEmail());
-        this.txtTelefono.setText(this.usuario.getTelefono());
-        if (this.cmbTipo != null) {
-            this.cmbTipo.setSelectedItem(this.usuario.getTipo());
-        }
-
-        this.cmbEstado.setSelectedItem(this.usuario.getEstado() != null ? this.usuario.getEstado() : "ACTIVO");
-        if (this.usuario.getEmpresa() != null) {
-            for(int i = 0; i < this.cmbEmpresa.getItemCount(); ++i) {
-                if (((String)this.cmbEmpresa.getItemAt(i)).startsWith(this.usuario.getEmpresa().getIdEmpresa())) {
-                    this.cmbEmpresa.setSelectedIndex(i);
-                    break;
-                }
-            }
-        }
-
-    }
-
-    private void validarFortaleza() {
-        String pass = this.txtPassword.getText();
-        if (pass.isEmpty()) {
-            this.lblFortaleza.setText("");
-        } else if (pass.length() < 8) {
-            this.lblFortaleza.setText("Muy corta");
-            this.lblFortaleza.setForeground(Color.RED);
+        Tema.fila(f, fila++, "Correo (opcional)", txtEmail);
+        Tema.fila(f, fila++, "Teléfono (opcional)", txtTelefono);
+        Tema.fila(f, fila++, "Rol *", cmbRol);
+        Tema.fila(f, fila++, "Empresa", cmbEmpresa);
+        if (editando != null) {
+            Tema.fila(f, fila++, "Estado", cmbEstado);
         } else {
-            boolean hasUpper = !pass.equals(pass.toLowerCase());
-            boolean hasLower = !pass.equals(pass.toUpperCase());
-            boolean hasDigit = pass.matches(".*\\d.*");
-            boolean hasSpecial = pass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?].*");
-            int score = (hasUpper ? 1 : 0) + (hasLower ? 1 : 0) + (hasDigit ? 1 : 0) + (hasSpecial ? 1 : 0);
-            if (score < 2) {
-                this.lblFortaleza.setText("Débil");
-                this.lblFortaleza.setForeground(Color.ORANGE);
-            } else if (score < 4) {
-                this.lblFortaleza.setText("Media");
-                this.lblFortaleza.setForeground(new Color(200, 180, 0));
-            } else {
-                this.lblFortaleza.setText("Fuerte");
-                this.lblFortaleza.setForeground(new Color(0, 128, 0));
-            }
+            Tema.fila(f, fila++, "Pregunta (opcional)", cmbPregunta);
+            Tema.fila(f, fila++, "Respuesta", txtRespuesta);
+        }
+        Tema.vincularFortaleza(txtClave, lblFortaleza);
 
+        JLabel nota = Tema.nota(500, "<html>Un <b>Administrador sin empresa</b> gestiona toda la plataforma (recargas, reportes, todas las empresas). "
+                + "Un operador siempre pertenece a una empresa." + (editando != null ? "<br>Deja la contraseña vacía para no cambiarla." : "") + "</html>");
+        nota.setForeground(Tema.TEXTO_SUAVE);
+
+        javax.swing.JButton guardar = Tema.boton("Guardar", true);
+        guardar.addActionListener(e -> guardar());
+        javax.swing.JButton cancelar = Tema.boton("Cancelar", false);
+        cancelar.addActionListener(e -> dispose());
+        getRootPane().setDefaultButton(guardar);
+        JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
+        botones.setOpaque(false);
+        botones.add(cancelar);
+        botones.add(guardar);
+
+        JPanel centro = new JPanel(new BorderLayout(0, 8));
+        centro.setBackground(Tema.FONDO);
+        centro.setBorder(BorderFactory.createEmptyBorder(14, 28, 14, 28));
+        centro.add(nota, BorderLayout.NORTH);
+        centro.add(f, BorderLayout.CENTER);
+        JPanel sur = new JPanel(new BorderLayout(0, 6));
+        sur.setOpaque(false);
+        sur.add(lblMensaje, BorderLayout.NORTH);
+        sur.add(botones, BorderLayout.CENTER);
+        centro.add(sur, BorderLayout.SOUTH);
+        JScrollPane scroll = new JScrollPane(centro);
+        scroll.setBorder(null);
+        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        add(scroll, BorderLayout.CENTER);
+
+        if (editando != null) {
+            txtLogin.setText(editando.getLogin());
+            txtNombre.setText(editando.getNombre());
+            txtCedula.setText(editando.getCedula());
+            txtEmail.setText(editando.getEmail());
+            txtTelefono.setText(editando.getTelefono());
+            cmbRol.setModel(new javax.swing.DefaultComboBoxModel<>(new String[]{editando.getTipo()}));
+            cmbEstado.setSelectedItem(editando.getEstado());
+            txtLogin.setEnabled(false);
+            txtCedula.setEnabled(false);
+            cmbRol.setEnabled(false);
+            cmbEmpresa.setEnabled(false);
+            txtNombre.setEnabled(editando.getRol() != objetosNegocio.Rol.CONDUCTOR);
+        }
+        setPreferredSize(new Dimension(680, 700));
+        pack();
+        setLocationRelativeTo(padre);
+    }
+
+    private void cargarEmpresas(List<Empresa> empresas) {
+        if (actor.tieneEmpresa()) {
+            String id = actor.getEmpresa().getIdEmpresa();
+            String nombre = actor.getEmpresa().getNombre() != null ? actor.getEmpresa().getNombre() : id;
+            cmbEmpresa.addItem(new ItemEmpresa(id, nombre));
+            cmbEmpresa.setEnabled(false);
+            return;
+        }
+        cmbEmpresa.addItem(new ItemEmpresa("", "(Ninguna: administrador general)"));
+        for (Empresa e : empresas) {
+            cmbEmpresa.addItem(new ItemEmpresa(e.getIdEmpresa(), e.getIdEmpresa() + " · " + e.getNombre()));
+        }
+        if (editando != null && editando.tieneEmpresa()) {
+            for (int i = 0; i < cmbEmpresa.getItemCount(); i++) {
+                if (cmbEmpresa.getItemAt(i).id.equals(editando.getEmpresa().getIdEmpresa())) {
+                    cmbEmpresa.setSelectedIndex(i);
+                }
+            }
         }
     }
 
     private void guardar() {
-        if (!this.txtNombre.getText().trim().isEmpty() && !this.txtEmail.getText().trim().isEmpty()) {
-            if (this.txtPassword.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "La contraseña es obligatoria", "Error", 0);
-            } else {
-                String cedula = this.txtCedula.getText().trim();
-                if (this.validarCedulaEcuatoriana(cedula)) {
-                    if (this.txtPassword.getText().length() < 8) {
-                        JOptionPane.showMessageDialog(this, "La contraseña debe tener al menos 8 caracteres", "Error de Validación", 0);
-                    } else {
-                        String email = this.txtEmail.getText().trim();
-                        if (email.contains(" ")) {
-                            JOptionPane.showMessageDialog(this, "El email no puede contener espacios", "Error de Validación", 0);
-                        } else if (!email.equals(email.toLowerCase())) {
-                            JOptionPane.showMessageDialog(this, "El email no puede contener mayúsculas", "Error de Validación", 0);
-                        } else if (!email.matches("^[a-z0-9._%+-]+@[a-z0-9.-]+\\.[a-z]{2,}$")) {
-                            JOptionPane.showMessageDialog(this, "El formato del email no es válido", "Error de Validación", 0);
-                        } else {
-                            String telefono = this.txtTelefono.getText().trim();
-                            if (telefono.isEmpty() || telefono.length() >= 9 && telefono.length() <= 10) {
-                                if (this.cmbEmpresa.getSelectedIndex() == 0) {
-                                    JOptionPane.showMessageDialog(this, "Debe seleccionar la empresa a la que pertenece el usuario.", "Error de Validación", 0);
-                                } else {
-                                    try {
-                                        Usuarios usuariosDB = new Usuarios("usuarios.dat");
-                                        List<Usuario> lista = usuariosDB.lista();
-                                        String nuevaCedula = this.txtCedula.getText().trim();
-                                        String nuevoEmail = this.txtEmail.getText().trim();
-                                        String nuevoNombre = this.txtNombre.getText().trim();
-
-                                        for(Usuario u : lista) {
-                                            if (u.getNombre().equalsIgnoreCase(nuevoNombre)) {
-                                                if (this.usuario == null || this.usuario.getIdUsuario() == null || !u.getIdUsuario().equals(this.usuario.getIdUsuario())) {
-                                                    JOptionPane.showMessageDialog(this, "El nombre de usuario ya está registrado.", "Error de Validación", 0);
-                                                    return;
-                                                }
-                                            } else if (u.getCedula().equals(nuevaCedula)) {
-                                                if (this.usuario == null || this.usuario.getIdUsuario() == null || !u.getIdUsuario().equals(this.usuario.getIdUsuario())) {
-                                                    JOptionPane.showMessageDialog(this, "La cédula ya está registrada en otro usuario.", "Error de Validación", 0);
-                                                    return;
-                                                }
-                                            } else if (u.getEmail().equalsIgnoreCase(nuevoEmail) && (this.usuario == null || this.usuario.getIdUsuario() == null || !u.getIdUsuario().equals(this.usuario.getIdUsuario()))) {
-                                                JOptionPane.showMessageDialog(this, "El email ya está registrado en otro usuario.", "Error de Validación", 0);
-                                                return;
-                                            }
-                                        }
-
-                                        if (this.usuario == null) {
-                                            this.usuario = new Usuario();
-                                            this.usuario.setFechaRegistro(new Fecha());
-                                            String prefix = "USR";
-                                            int nextId = lista.size() + 1;
-                                            String generatedId = String.format("USU%03d", nextId);
-                                            boolean exists = true;
-
-                                            while(exists) {
-                                                exists = false;
-
-                                                for(Usuario u : lista) {
-                                                    if (u.getIdUsuario().equals(generatedId)) {
-                                                        exists = true;
-                                                        ++nextId;
-                                                        generatedId = String.format("USU%03d", nextId);
-                                                        break;
-                                                    }
-                                                }
-                                            }
-
-                                            this.usuario.setIdUsuario(generatedId);
-                                        }
-                                    } catch (PersistenciaException var15) {
-                                        if (this.usuario == null) {
-                                            this.usuario = new Usuario();
-                                            this.usuario.setFechaRegistro(new Fecha());
-                                            this.usuario.setIdUsuario("ERR" + System.currentTimeMillis());
-                                        }
-                                    }
-
-                                    this.usuario.setNombre(this.txtNombre.getText().trim());
-                                    this.usuario.setCedula(cedula);
-                                    this.usuario.setEmail(email);
-                                    this.usuario.setTelefono(telefono);
-                                    this.usuario.setEstado((String)this.cmbEstado.getSelectedItem());
-                                    this.usuario.setTipo((String)this.cmbTipo.getSelectedItem());
-                                    this.usuario.setContrasena(this.txtPassword.getText().trim());
-                                    if (this.cmbEmpresa.getSelectedIndex() > 0) {
-                                        String empresaSeleccionada = (String)this.cmbEmpresa.getSelectedItem();
-                                        String idEmpresa = empresaSeleccionada.split(" - ")[0].trim();
-                                        this.usuario.setEmpresa(new Empresa(idEmpresa));
-                                    }
-
-                                    this.confirmado = true;
-                                    this.dispose();
-                                }
-                            } else {
-                                JOptionPane.showMessageDialog(this, "El teléfono debe tener entre 9 y 10 dígitos", "Error de Validación", 0);
-                            }
-                        }
-                    }
-                }
+        ResultadoOperacion r;
+        if (editando == null) {
+            if (!new String(txtClave.getPassword()).equals(new String(txtConfirmar.getPassword()))) {
+                Tema.mostrarMensaje(lblMensaje, "Las contraseñas no coinciden", false);
+                return;
             }
+            ItemEmpresa empresa = (ItemEmpresa) cmbEmpresa.getSelectedItem();
+            String pregunta = String.valueOf(cmbPregunta.getEditor().getItem()).trim();
+            r = controlador.crearUsuarioAdministrativo(actor, (String) cmbRol.getSelectedItem(), txtLogin.getText(), txtNombre.getText(), txtCedula.getText(),
+                    new String(txtClave.getPassword()), txtEmail.getText(), txtTelefono.getText(), empresa == null ? "" : empresa.id,
+                    txtRespuesta.getText().trim().isEmpty() ? "" : pregunta, txtRespuesta.getText());
         } else {
-            JOptionPane.showMessageDialog(this, "Complete todos los campos obligatorios", "Error de Validación", 0);
+            r = controlador.actualizarUsuarioAdministrativo(actor, editando.getIdUsuario(), txtNombre.getText(), txtEmail.getText(), txtTelefono.getText(),
+                    (String) cmbEstado.getSelectedItem(), new String(txtClave.getPassword()));
         }
-    }
-
-    private boolean validarCedulaEcuatoriana(String cedula) {
-        if (cedula.length() != 10) {
-            JOptionPane.showMessageDialog(this, "La cédula debe tener exactamente 10 dígitos", "Error de Validación", 0);
-            return false;
-        } else {
-            return true;
+        if (!r.isExito()) {
+            Tema.mostrarMensaje(lblMensaje, r.getMensaje(), false);
+            return;
         }
-    }
-
-    private void agregarFiltroCedula(final JTextField campo) {
-        campo.getDocument().addDocumentListener(new DocumentListener() {
-            public void changedUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void validar() {
-                SwingUtilities.invokeLater(() -> {
-                    String text = campo.getText();
-                    String filtered = text.replaceAll("[^0-9]", "");
-                    if (filtered.length() > 10) {
-                        filtered = filtered.substring(0, 10);
-                    }
-
-                    if (!text.equals(filtered)) {
-                        campo.setText(filtered);
-                    }
-
-                });
-            }
-        });
-    }
-
-    private void agregarFiltroEmail(final JTextField campo) {
-        campo.getDocument().addDocumentListener(new DocumentListener() {
-            public void changedUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void validar() {
-                SwingUtilities.invokeLater(() -> {
-                    String text = campo.getText();
-                    String filtered = text.toLowerCase().replaceAll("\\s", "");
-                    if (!text.equals(filtered)) {
-                        int pos = campo.getCaretPosition();
-                        campo.setText(filtered);
-
-                        try {
-                            campo.setCaretPosition(Math.min(pos, filtered.length()));
-                        } catch (IllegalArgumentException var5) {
-                            campo.setCaretPosition(filtered.length());
-                        }
-                    }
-
-                });
-            }
-        });
-    }
-
-    private void agregarFiltroTelefono(final JTextField campo) {
-        campo.getDocument().addDocumentListener(new DocumentListener() {
-            public void changedUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void insertUpdate(DocumentEvent e) {
-                this.validar();
-            }
-
-            public void validar() {
-                SwingUtilities.invokeLater(() -> {
-                    String text = campo.getText();
-                    String filtered = text.replaceAll("[^0-9]", "");
-                    if (filtered.length() > 10) {
-                        filtered = filtered.substring(0, 10);
-                    }
-
-                    if (!text.equals(filtered)) {
-                        campo.setText(filtered);
-                    }
-
-                });
-            }
-        });
-    }
-
-    public Usuario getUsuario() {
-        return this.usuario;
-    }
-
-    public boolean isConfirmado() {
-        return this.confirmado;
+        alGuardar.run();
+        dispose();
     }
 }

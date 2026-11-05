@@ -117,7 +117,7 @@ public class DialogoFormularioFactura extends JDialog {
         g.gridy = 1;
         p.add(new JLabel("Empresa: *"), g);
         g.gridx = 1;
-        
+
         JPanel pEmpresa = new JPanel(new BorderLayout(5, 0));
         this.txtEmpresa = new JTextField();
         this.txtEmpresa.setEditable(false);
@@ -131,7 +131,7 @@ public class DialogoFormularioFactura extends JDialog {
         g.gridy = 2;
         p.add(new JLabel("Pasajero: *"), g);
         g.gridx = 1;
-        
+
         JPanel pPasajero = new JPanel(new BorderLayout(5, 0));
         this.txtPasajero = new JTextField();
         this.txtPasajero.setEditable(false);
@@ -145,7 +145,7 @@ public class DialogoFormularioFactura extends JDialog {
         g.gridy = 3;
         p.add(new JLabel("Reserva: *"), g);
         g.gridx = 1;
-        
+
         JPanel pReserva = new JPanel(new BorderLayout(5, 0));
         this.txtReserva = new JTextField();
         this.txtReserva.setEditable(false);
@@ -295,7 +295,7 @@ public class DialogoFormularioFactura extends JDialog {
             DetalleFactura d2 = new DetalleFactura((String)null, (String)null, "Impuesto al Valor Agregado (15%)", 1, iva);
             this.detallesGenerados.add(d2);
             this.modeloDetalles.addRow(new Object[]{d2.getDescripcion(), d2.getCantidad(), String.format("$%.2f", d2.getPrecioUnitario()), String.format("$%.2f", d2.getSubtotal())});
-            
+
             if (r.getPasajero() != null) {
                 this.pasajeroSeleccionadoObj = r.getPasajero();
                 this.txtPasajero.setText(this.pasajeroSeleccionadoObj.getNombre());

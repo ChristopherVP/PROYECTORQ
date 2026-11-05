@@ -61,7 +61,7 @@ public class PanelGestionReservas extends JPanel {
     private void initComponents() {
         this.setLayout(new BorderLayout(10, 10));
         this.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
-        
+
         JPanel panelSuperior = new JPanel(new BorderLayout(10, 0));
         JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         JPanel panelBusqueda = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
@@ -148,7 +148,7 @@ public class PanelGestionReservas extends JPanel {
                         mapaOrigenes.put(v.getIdViaje(), rutaOrigen.getOrDefault(v.getRuta().getIdRuta(), "N/A"));
                         mapaDestinos.put(v.getIdViaje(), rutaDestino.getOrDefault(v.getRuta().getIdRuta(), "N/A"));
                     }
-                    
+
                     if (v.getFechaSalida() != null) {
                         mapaFechasViaje.put(v.getIdViaje(), v.getFechaSalida().toString());
                     }
@@ -166,20 +166,20 @@ public class PanelGestionReservas extends JPanel {
 
             for(Reserva r : this.listaReservasCompleta) {
                 if (this.empresaFiltro == null || r.getEmpresa() != null && r.getEmpresa().getIdEmpresa().equals(this.empresaFiltro.getIdEmpresa())) {
-                    
+
                     String origen = "N/A";
                     String destino = "N/A";
                     String fechaViaje = "N/A";
-                    
+
                     if (r.getViaje() != null) {
                         String idV = r.getViaje().getIdViaje();
                         origen = mapaOrigenes.getOrDefault(idV, "N/A");
                         destino = mapaDestinos.getOrDefault(idV, "N/A");
                         fechaViaje = mapaFechasViaje.getOrDefault(idV, "N/A");
                     }
-                    
+
                     String nombrePasajero = r.getPasajero() != null ? r.getPasajero().getNombre() : "N/A";
-                    
+
                     if (!texto.isEmpty()) {
                         String datos = (r.getIdReserva() + " " + nombrePasajero + " " + origen + " " + destino + " " + fechaViaje).toUpperCase();
                         boolean coincide = true;

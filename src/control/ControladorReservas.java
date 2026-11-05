@@ -109,7 +109,7 @@ public class ControladorReservas {
         }
     }
 
-    private double calcularPrecio(double precioBase, Pasajero pasajero, int cantidad) {
+    public double calcularPrecio(double precioBase, Pasajero pasajero, int cantidad) {
         double factorPasajero = (double)1.0F;
         String tipo = pasajero.getTipoPasajero();
         if ("NIÑO".equals(tipo) || "ADOLESCENTE".equals(tipo) || "TERCERA_EDAD".equals(tipo) || "DISCAPACITADO".equals(tipo)) {
@@ -199,6 +199,15 @@ public class ControladorReservas {
         } catch (Exception e) {
             return new ResultadoOperacion(false, "Error al actualizar: " + e.getMessage());
         }
+    }
+
+    /** Si la reserva se pagó con la billetera y estaba confirmada, devuelve el dinero (una sola vez). */
+    private String reembolsarSiCorresponde(Reserva reserva, String estadoPrevio) {
+        if (reserva == null || !"BILLETERA".equalsIgnoreCase(reserva.getMetodoPago()) || !"CONFIRMADA".equalsIgnoreCase(estadoPrevio)) {
+            return "";
+        }
+        ResultadoOperacion r = new ControladorBilletera().reembolsarReserva(reserva.getIdReserva());
+        return r.isExito() ? " " + r.getMensaje() : "";
     }
 
     private void liberarAsientoDirecto(Asientos asientosDB, String idViaje, int numero) {
@@ -301,9 +310,11 @@ public class ControladorReservas {
                     this.fachada.actualiza(viaje);
                 }
 
+                String estadoPrevio = reserva.getEstado();
                 reserva.setEstado("CANCELADA");
                 this.fachada.actualiza(reserva);
-                return new ResultadoOperacion(true, "Reserva cancelada exitosamente", reserva);
+                String reembolso = this.reembolsarSiCorresponde(reserva, estadoPrevio);
+                return new ResultadoOperacion(true, "Reserva cancelada exitosamente." + reembolso, reserva);
             }
         } catch (FachadaException e) {
             return new ResultadoOperacion(false, "Error al cancelar reserva: " + e.getMessage());
@@ -316,6 +327,7 @@ public class ControladorReservas {
             if (reserva == null) {
                 return new ResultadoOperacion(false, "Reserva no encontrada");
             } else {
+                this.reembolsarSiCorresponde(reserva, reserva.getEstado());
                 if (reserva.getViaje() != null) {
                     String idViaje = reserva.getViaje().getIdViaje();
                     List<Asiento> todosAsientos = this.fachada.consultaAsientosPorViaje(idViaje);

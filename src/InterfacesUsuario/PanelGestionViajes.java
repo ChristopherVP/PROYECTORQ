@@ -126,7 +126,7 @@ public class PanelGestionViajes extends JPanel {
                 PanelGestionViajes.this.filtrar();
             }
         });
-        
+
         this.btnBuscar = new JButton("Buscar");
         this.btnBuscar.addActionListener((e) -> this.filtrar());
 
@@ -156,7 +156,7 @@ public class PanelGestionViajes extends JPanel {
     private void cargarDatos() {
         try {
             this.listaViajesCompleta = this.persistencia.lista();
-            
+
             // Cargar datos auxiliares una sola vez para optimizar la búsqueda
             this.mapaEmpresas.clear();
             this.mapaBuses.clear();
@@ -178,14 +178,14 @@ public class PanelGestionViajes extends JPanel {
                 Object selectedEmpresa = this.cmbEmpresa.getSelectedItem();
                 this.cmbEmpresa.removeAllItems();
                 this.cmbEmpresa.addItem("Todas las Empresas");
-                
+
                 List<String> nombresEmpresas = new java.util.ArrayList<>(mapaEmpresas.values());
                 Collections.sort(nombresEmpresas);
-                
+
                 for(String nombre : nombresEmpresas) {
                     this.cmbEmpresa.addItem(nombre);
                 }
-                
+
                 if (selectedEmpresa != null) {
                     this.cmbEmpresa.setSelectedItem(selectedEmpresa);
                 }
@@ -238,7 +238,7 @@ public class PanelGestionViajes extends JPanel {
             } catch (Exception e) {
                 // Ignorar errores de carga de mapas auxiliares si archivos no existen
             }
-            
+
             this.filtrar();
         } catch (PersistenciaException e) {
             JOptionPane.showMessageDialog(this, "Error: " + e.getMessage());
@@ -263,12 +263,12 @@ public class PanelGestionViajes extends JPanel {
         String textoBusqueda = this.txtBuscar.getText().toUpperCase().trim();
         String[] palabrasClave = textoBusqueda.split("\\s+");
         boolean soloDisponibles = this.chkSoloDisponibles.isSelected();
-        
+
         Object anioObj = this.cmbAnio.getSelectedItem();
         String anioSel = anioObj != null ? anioObj.toString() : "Año: Todos";
-        
+
         int mesSel = this.cmbMes.getSelectedIndex(); // 0 para "Todos"
-        
+
         Object empObj = this.cmbEmpresa.getSelectedItem();
         String empresaSel = empObj != null ? empObj.toString() : "Todas las Empresas";
 
@@ -287,15 +287,15 @@ public class PanelGestionViajes extends JPanel {
             if (procesados.contains(v.getIdViaje())) {
                 continue;
             }
-            
+
             // FILTRO 1: EMPRESA
             String idEmpresaViaje = v.getEmpresa() != null ? v.getEmpresa().getIdEmpresa().trim() : "";
-            
+
             if (this.empresaFiltro != null) {
                 if (!idEmpresaViaje.equals(this.empresaFiltro.getIdEmpresa().trim())) {
                     continue; // No pertenece a la empresa del usuario
                 }
-            } 
+            }
             else if (!"Todas las Empresas".equals(empresaSel)) {
                 String nombreEmpresaViaje = mapaEmpresas.getOrDefault(idEmpresaViaje, "");
                 if (!nombreEmpresaViaje.equals(empresaSel)) {
@@ -328,7 +328,7 @@ public class PanelGestionViajes extends JPanel {
             // FILTRO 4: TEXTO DE BÚSQUEDA
             String origen = (String)this.mapaOrigenes.getOrDefault(v.getRuta() != null ? v.getRuta().getIdRuta() : "", "N/A");
             String destino = (String)this.mapaDestinos.getOrDefault(v.getRuta() != null ? v.getRuta().getIdRuta() : "", "N/A");
-            
+
             if (!textoBusqueda.isEmpty()) {
                 String busStr = v.getBus() != null ? (String)this.mapaBuses.getOrDefault(v.getBus().getIdBus(), "") : "";
                 String conductorStr = v.getConductor1() != null ? (String)this.mapaConductores.getOrDefault(v.getConductor1().getIdConductor(), "") : "";
@@ -336,9 +336,9 @@ public class PanelGestionViajes extends JPanel {
                     conductorStr += " " + (String)this.mapaConductores.getOrDefault(v.getConductor2().getIdConductor(), "");
                 }
                 String fechaStr = v.getFechaSalida() != null ? v.getFechaSalida().toString() : "";
-                
+
                 String datosCompletos = (v.getIdViaje() + " " + origen + " " + destino + " " + busStr + " " + conductorStr + " " + fechaStr).toUpperCase();
-                
+
                 boolean coincideTodas = true;
                 for (String palabra : palabrasClave) {
                     if (!datosCompletos.contains(palabra)) {
@@ -381,7 +381,7 @@ public class PanelGestionViajes extends JPanel {
                 String id = v.getConductor1().getIdConductor();
                 nombreConductor = (String)this.mapaConductores.getOrDefault(id, id);
             }
-            
+
             if (v.getConductor2() != null) {
                 String id2 = v.getConductor2().getIdConductor();
                 String nombre2 = (String)this.mapaConductores.getOrDefault(id2, id2);

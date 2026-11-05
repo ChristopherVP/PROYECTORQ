@@ -302,7 +302,7 @@ public class PantallaReportes extends JDialog {
             Usuario u = (Usuario)usuarios.get(i);
             if (this.empresaFiltro == null || u.getEmpresa() != null && u.getEmpresa().getIdEmpresa().equals(this.empresaFiltro.getIdEmpresa())) {
                 String tipo = u.getTipo();
-                if ("Cliente".equals(tipo)) {
+                if ("Cliente".equals(tipo) || "Pasajero".equals(tipo)) {
                     ++clientes;
                 } else if ("Administrador".equals(tipo)) {
                     ++administradores;
