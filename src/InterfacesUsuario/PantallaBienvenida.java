@@ -81,7 +81,7 @@ public class PantallaBienvenida extends JFrame {
 
     private void abrirInicioSesion() {
         this.setVisible(false);
-        PantallaInicioSesion inicioSesion = new PantallaInicioSesion(this);
+        PantallaInicioSesion inicioSesion = new PantallaInicioSesion();
         inicioSesion.setVisible(true);
     }
 

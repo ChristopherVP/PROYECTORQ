@@ -82,7 +82,7 @@ public class Pasajeros extends AccesoAleatorio {
 
     public void agrega(Pasajero pasajero) throws PersistenciaException {
         pasajero.setIdPasajero(this.generarId());
-        if (pasajero.getEmpresa() != null && Validador.validarNoVacio(pasajero.getEmpresa().getIdEmpresa())) {
+        if (Validador.validarNoVacio(pasajero.getNombre())) {
             try {
                 this.archivo = new RandomAccessFile(this.nomArchivo, "rw");
                 this.archivo.seek(this.archivo.length());
@@ -94,7 +94,7 @@ public class Pasajeros extends AccesoAleatorio {
             }
 
         } else {
-            throw new PersistenciaException("Debe asignar una empresa al pasajero");
+            throw new PersistenciaException("El nombre del pasajero es obligatorio");
         }
     }
 
@@ -122,7 +122,7 @@ public class Pasajeros extends AccesoAleatorio {
     }
 
     public void actualiza(Pasajero pActualizar) throws PersistenciaException {
-        if (pActualizar.getEmpresa() != null && Validador.validarNoVacio(pActualizar.getEmpresa().getIdEmpresa())) {
+        if (Validador.validarNoVacio(pActualizar.getNombre())) {
             try {
                 this.archivo = new RandomAccessFile(this.nomArchivo, "rw");
 
@@ -142,7 +142,7 @@ public class Pasajeros extends AccesoAleatorio {
             }
 
         } else {
-            throw new PersistenciaException("Debe asignar una empresa al pasajero");
+            throw new PersistenciaException("El nombre del pasajero es obligatorio");
         }
     }
 

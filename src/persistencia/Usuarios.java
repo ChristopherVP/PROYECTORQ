@@ -1,297 +1,251 @@
-//
-// Source code recreated from a .class file by IntelliJ IDEA
-// (powered by FernFlower decompiler)
-//
-
 package persistencia;
 
 import excepciones.PersistenciaException;
-import excepciones.Validador;
-import java.io.EOFException;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import objetosNegocio.Empresa;
+import objetosNegocio.Rol;
 import objetosNegocio.Usuario;
+import objetosServicio.Seguridad;
 
+/**
+ * Persistencia de usuarios en archivo de acceso aleatorio (registro fijo).
+ * Formato v2: id, login, nombre, cédula, hash de clave, email, teléfono, tipo, fecha, empresa, estado,
+ * pregunta, hash de respuesta, idPerfil, intentos de recuperación y bloqueo.
+ */
 public class Usuarios extends AccesoAleatorio {
+    private static final int CARACTERES = 10 + 20 + 50 + 15 + 80 + 50 + 20 + 20 + 10 + 20 + 80 + 80 + 10;
+    public static final int TAM_REGISTRO = CARACTERES * 2 + 12 + 4 + 8;
+
     public Usuarios(String nomArchivo) {
-        super(nomArchivo, 442);
+        super(nomArchivo, TAM_REGISTRO);
     }
 
     private Usuario leeUsuario() throws IOException {
-        Usuario usuario = new Usuario();
-        usuario.setIdUsuario(this.leeString(10));
-        usuario.setNombre(this.leeString(50));
-        usuario.setCedula(this.leeString(15));
-        usuario.setContrasena(this.leeString(20));
-        usuario.setEmail(this.leeString(50));
-        usuario.setTelefono(this.leeString(20));
-        usuario.setTipo(this.leeString(20));
-        usuario.setFechaRegistro(this.leeFecha());
-        usuario.setEmpresa(new Empresa(this.leeString(10)));
-        usuario.setEstado(this.leeString(20));
-        return usuario;
+        Usuario u = new Usuario();
+        u.setIdUsuario(leeString(10));
+        u.setLogin(leeString(20));
+        u.setNombre(leeString(50));
+        u.setCedula(leeString(15));
+        u.setContrasena(leeString(80));
+        u.setEmail(leeString(50));
+        u.setTelefono(leeString(20));
+        u.setTipo(leeString(20));
+        u.setFechaRegistro(leeFecha());
+        String idEmpresa = leeString(10);
+        u.setEmpresa(idEmpresa.isEmpty() ? null : new Empresa(idEmpresa));
+        u.setEstado(leeString(20));
+        u.setPreguntaSeguridad(leeString(80));
+        u.setRespuestaSeguridad(leeString(80));
+        u.setIdPerfil(leeString(10));
+        u.setIntentosRecuperacion(archivo.readInt());
+        u.setBloqueoHasta(archivo.readLong());
+        return u;
     }
 
-    private void escribeUsuario(Usuario usuario) throws IOException {
-        this.escribeString(usuario.getIdUsuario(), 10);
-        this.escribeString(usuario.getNombre(), 50);
-        this.escribeString(usuario.getCedula(), 15);
-        this.escribeString(usuario.getContrasena(), 20);
-        this.escribeString(usuario.getEmail(), 50);
-        this.escribeString(usuario.getTelefono(), 20);
-        this.escribeString(usuario.getTipo(), 20);
-        this.escribeFecha(usuario.getFechaRegistro());
-        String idEmpresa = usuario.getEmpresa() != null ? usuario.getEmpresa().getIdEmpresa() : "";
-        this.escribeString(idEmpresa, 10);
-        this.escribeString(usuario.getEstado(), 20);
+    private void escribeUsuario(Usuario u) throws IOException {
+        escribeString(u.getIdUsuario(), 10);
+        escribeString(u.getLogin(), 20);
+        escribeString(u.getNombre(), 50);
+        escribeString(u.getCedula(), 15);
+        escribeString(u.getContrasena(), 80);
+        escribeString(u.getEmail(), 50);
+        escribeString(u.getTelefono(), 20);
+        escribeString(u.getTipo(), 20);
+        escribeFecha(u.getFechaRegistro());
+        escribeString(u.tieneEmpresa() ? u.getEmpresa().getIdEmpresa() : "", 10);
+        escribeString(u.getEstado(), 20);
+        escribeString(u.getPreguntaSeguridad(), 80);
+        escribeString(u.getRespuestaSeguridad(), 80);
+        escribeString(u.getIdPerfil(), 10);
+        archivo.writeInt(u.getIntentosRecuperacion());
+        archivo.writeLong(u.getBloqueoHasta());
     }
 
-    private boolean esUsuarioValido(Usuario usuario) {
-        return usuario != null && usuario.getIdUsuario() != null && !usuario.getIdUsuario().trim().isEmpty();
+    private static boolean esValido(Usuario u) {
+        return u != null && u.getIdUsuario() != null && !u.getIdUsuario().trim().isEmpty();
     }
 
-    private String generarSiguienteCodigoUsuario() throws PersistenciaException {
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "r");
-            int maxNumero = 0;
-
-            try {
-                while(true) {
-                    Usuario usuario = this.leeUsuario();
-                    if (this.esUsuarioValido(usuario)) {
-                        String codigo = usuario.getIdUsuario();
-                        if (codigo.startsWith("USU") && codigo.length() > 3) {
-                            try {
-                                int numero = Integer.parseInt(codigo.substring(3));
-                                if (numero > maxNumero) {
-                                    maxNumero = numero;
-                                }
-                            } catch (NumberFormatException var5) {
-                            }
-                        }
-                    }
-                }
-            } catch (EOFException var6) {
-                this.archivo.close();
-                int siguienteNumero = maxNumero + 1;
-                return String.format("USU%03d", siguienteNumero);
-            }
-        } catch (FileNotFoundException var7) {
-            return "USU001";
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al generar código de usuario", e);
+    /** Validación estructural del registro (las reglas de negocio finas están en ControladorUsuarios). */
+    private void validar(Usuario u) throws PersistenciaException {
+        if (u.getLogin() == null || u.getLogin().trim().isEmpty()) {
+            throw new PersistenciaException("El nombre de usuario es obligatorio");
         }
-    }
-
-    private void validarUsuario(Usuario usuario) throws PersistenciaException {
-        if (!Validador.validarNoVacio(usuario.getNombre())) {
+        if (u.getNombre() == null || u.getNombre().trim().isEmpty()) {
             throw new PersistenciaException("El nombre no puede estar vacío");
-        } else if (!Validador.validarCedulaEcuatoriana(usuario.getCedula())) {
-            throw new PersistenciaException(Validador.getMensajeErrorCedula());
-        } else if (!Validador.validarNoVacio(usuario.getContrasena())) {
-            throw new PersistenciaException("La contraseña no puede estar vacía");
-        } else if (usuario.getContrasena().length() < 8) {
-            throw new PersistenciaException("La contraseña debe tener al menos 8 caracteres");
-        } else if (!Validador.validarEmail(usuario.getEmail())) {
-            throw new PersistenciaException(Validador.getMensajeErrorEmail());
-        } else if (usuario.getTelefono() != null && !usuario.getTelefono().trim().isEmpty() && !Validador.validarTelefono(usuario.getTelefono())) {
-            throw new PersistenciaException("Teléfono inválido. Debe tener entre 9 y 10 dígitos");
-        } else if (!Validador.validarNoVacio(usuario.getTipo())) {
-            throw new PersistenciaException("El tipo de usuario no puede estar vacío");
-        } else if (usuario.getEmpresa() == null || !Validador.validarNoVacio(usuario.getEmpresa().getIdEmpresa())) {
-            throw new PersistenciaException("Los usuarios administrativos/operadores deben pertenecer a una empresa");
+        }
+        if (u.getCedula() == null || !u.getCedula().trim().matches("\\d{10}")) {
+            throw new PersistenciaException("La cédula debe tener 10 dígitos");
+        }
+        if (!Seguridad.esHash(u.getContrasena())) {
+            throw new PersistenciaException("La contraseña debe almacenarse protegida (hash)");
+        }
+        Rol rol = u.getRol();
+        if (rol == null) {
+            throw new PersistenciaException("Rol de usuario inválido: " + u.getTipo());
+        }
+        if (rol == Rol.OPERADOR && !u.tieneEmpresa()) {
+            throw new PersistenciaException("Los operadores deben pertenecer a una empresa");
+        }
+        if ((rol == Rol.CONDUCTOR || rol == Rol.PASAJERO) && (u.getIdPerfil() == null || u.getIdPerfil().trim().isEmpty())) {
+            throw new PersistenciaException("Los conductores y pasajeros deben tener una ficha asociada");
+        }
+        if (u.getEstado() == null || u.getEstado().trim().isEmpty()) {
+            throw new PersistenciaException("El estado del usuario es obligatorio");
         }
     }
 
-    public Usuario obten(Usuario usuario) throws PersistenciaException {
-        Usuario var3;
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "r");
+    private String siguienteId(List<Usuario> existentes) {
+        int max = 0;
+        for (Usuario u : existentes) {
+            String id = u.getIdUsuario();
+            if (id.startsWith("USU") && id.length() > 3) {
+                try {
+                    max = Math.max(max, Integer.parseInt(id.substring(3)));
+                } catch (NumberFormatException ignorado) {
+                    // ids con otro formato no participan del correlativo
+                }
+            }
+        }
+        return String.format("USU%03d", max + 1);
+    }
 
-            Usuario usuarioLeido;
-            do {
-                usuarioLeido = this.leeUsuario();
-            } while(!this.esUsuarioValido(usuarioLeido) || !usuarioLeido.getIdUsuario().equals(usuario.getIdUsuario()));
+    public synchronized void agrega(Usuario usuario) throws PersistenciaException {
+        validar(usuario);
+        usuario.setIdUsuario(siguienteId(lista()));
+        escribeAlFinal(usuario);
+    }
 
-            var3 = usuarioLeido;
-            return var3;
-        } catch (FileNotFoundException var15) {
-            throw new PersistenciaException("Archivo inexistente");
-        } catch (EOFException var16) {
-            var3 = null;
+    /** Agrega conservando el id recibido (migraciones). */
+    public synchronized void importa(Usuario usuario) throws PersistenciaException {
+        validar(usuario);
+        if (!esValido(usuario)) {
+            throw new PersistenciaException("El usuario importado necesita un id");
+        }
+        escribeAlFinal(usuario);
+    }
+
+    private void escribeAlFinal(Usuario usuario) throws PersistenciaException {
+        try (RandomAccessFile raf = new RandomAccessFile(nomArchivo, "rw")) {
+            archivo = raf;
+            raf.seek(raf.length());
+            escribeUsuario(usuario);
         } catch (IOException e) {
-            throw new PersistenciaException("Error al acceder al archivo", e);
+            throw new PersistenciaException("Error al guardar el usuario", e);
         } finally {
-            try {
-                if (this.archivo != null) {
-                    this.archivo.close();
-                }
-            } catch (IOException e) {
-                throw new PersistenciaException("Error al cerrar el archivo", e);
-            }
-
+            archivo = null;
         }
-
-        return var3;
     }
 
-    public void agrega(Usuario usuario) throws PersistenciaException {
-        String codigoGenerado = this.generarSiguienteCodigoUsuario();
-        usuario.setIdUsuario(codigoGenerado);
-        if (usuario.getEstado() == null) {
-            usuario.setEstado("ACTIVO");
+    private long posicionDe(RandomAccessFile raf, String idUsuario) throws IOException {
+        long total = raf.length() / TAM_REGISTRO;
+        for (long i = 0; i < total; i++) {
+            long pos = i * TAM_REGISTRO;
+            raf.seek(pos);
+            Usuario u = leeUsuario();
+            if (esValido(u) && u.getIdUsuario().equals(idUsuario)) {
+                return pos;
+            }
         }
+        return -1;
+    }
 
-        this.validarUsuario(usuario);
+    public synchronized Usuario obten(Usuario usuario) throws PersistenciaException {
+        if (usuario == null || usuario.getIdUsuario() == null) {
+            return null;
+        }
+        return obtenPorIdUsuario(usuario.getIdUsuario());
+    }
 
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "rw");
-            this.archivo.seek(this.archivo.length());
-            this.escribeUsuario(usuario);
-            System.out.println("Usuario Agregado: " + usuario.getIdUsuario());
-        } catch (FileNotFoundException var11) {
-            throw new PersistenciaException("Archivo inexistente");
+    public synchronized Usuario obtenPorIdUsuario(String idUsuario) throws PersistenciaException {
+        for (Usuario u : lista()) {
+            if (u.getIdUsuario().equals(idUsuario)) {
+                return u;
+            }
+        }
+        return null;
+    }
+
+    public synchronized Usuario buscaPorLogin(String login) throws PersistenciaException {
+        if (login == null) {
+            return null;
+        }
+        for (Usuario u : lista()) {
+            if (u.getLogin() != null && u.getLogin().equalsIgnoreCase(login.trim())) {
+                return u;
+            }
+        }
+        return null;
+    }
+
+    public synchronized Usuario buscaPorCedula(String cedula) throws PersistenciaException {
+        if (cedula == null) {
+            return null;
+        }
+        for (Usuario u : lista()) {
+            if (cedula.trim().equals(u.getCedula())) {
+                return u;
+            }
+        }
+        return null;
+    }
+
+    public synchronized void actualiza(Usuario usuario) throws PersistenciaException {
+        validar(usuario);
+        try (RandomAccessFile raf = new RandomAccessFile(nomArchivo, "rw")) {
+            archivo = raf;
+            long pos = posicionDe(raf, usuario.getIdUsuario());
+            if (pos < 0) {
+                throw new PersistenciaException("Usuario no encontrado: " + usuario.getIdUsuario());
+            }
+            raf.seek(pos);
+            escribeUsuario(usuario);
         } catch (IOException e) {
-            throw new PersistenciaException("Error al acceder al archivo", e);
+            throw new PersistenciaException("Error al actualizar el usuario", e);
         } finally {
-            try {
-                if (this.archivo != null) {
-                    this.archivo.close();
-                }
-            } catch (IOException e) {
-                throw new PersistenciaException("Error al cerrar el archivo", e);
-            }
-
+            archivo = null;
         }
-
     }
 
-    public void actualiza(Usuario usuario) throws PersistenciaException {
-        this.validarUsuario(usuario);
-        boolean encontrado = false;
+    public synchronized void elimina(Usuario usuario) throws PersistenciaException {
+        try (RandomAccessFile raf = new RandomAccessFile(nomArchivo, "rw")) {
+            archivo = raf;
+            long pos = posicionDe(raf, usuario.getIdUsuario());
+            if (pos < 0) {
+                throw new PersistenciaException("Usuario no encontrado: " + usuario.getIdUsuario());
+            }
+            raf.seek(pos);
+            borraRegistro();
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al eliminar el usuario", e);
+        } finally {
+            archivo = null;
+        }
+    }
 
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "rw");
-
-            long posicionAntes;
-            Usuario usuarioLeido;
-            do {
-                posicionAntes = this.archivo.getFilePointer();
-                usuarioLeido = this.leeUsuario();
-            } while(!this.esUsuarioValido(usuarioLeido) || !usuarioLeido.getIdUsuario().equals(usuario.getIdUsuario()));
-
-            this.archivo.seek(posicionAntes);
-            this.escribeUsuario(usuario);
-            System.out.println("✓ Usuario actualizado: " + usuario.getIdUsuario());
-            encontrado = true;
-        } catch (FileNotFoundException var16) {
-            throw new PersistenciaException("Archivo inexistente");
-        } catch (EOFException var17) {
-            if (!encontrado) {
-                throw new PersistenciaException("El usuario no existe");
+    public synchronized List<Usuario> lista() throws PersistenciaException {
+        List<Usuario> resultado = new ArrayList<>();
+        try (RandomAccessFile raf = new RandomAccessFile(nomArchivo, "r")) {
+            archivo = raf;
+            long total = raf.length() / TAM_REGISTRO;
+            for (long i = 0; i < total; i++) {
+                Usuario u = leeUsuario();
+                if (esValido(u)) {
+                    resultado.add(u);
+                }
             }
         } catch (IOException e) {
-            throw new PersistenciaException("Error al acceder al archivo", e);
+            throw new PersistenciaException("Error al leer los usuarios", e);
         } finally {
-            try {
-                if (this.archivo != null) {
-                    this.archivo.close();
-                }
-            } catch (IOException e) {
-                throw new PersistenciaException("Error al cerrar el archivo", e);
-            }
-
+            archivo = null;
         }
-
-        if (!encontrado) {
-            throw new PersistenciaException("El usuario no existe");
-        }
-    }
-
-    public void elimina(Usuario usuario) throws PersistenciaException {
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "rw");
-            boolean encontrado = false;
-
-            long posicionAntes;
-            Usuario usr;
-            do {
-                posicionAntes = this.archivo.getFilePointer();
-                usr = this.leeUsuario();
-            } while(!this.esUsuarioValido(usr) || !usr.getIdUsuario().equals(usuario.getIdUsuario()));
-
-            usr.setEstado("INACTIVO");
-            this.archivo.seek(posicionAntes);
-            this.escribeUsuario(usr);
-            encontrado = true;
-            System.out.println("✓ Usuario desactivado (borrado lógico): " + usr.getIdUsuario());
-            if (!encontrado) {
-                throw new PersistenciaException("El usuario no existe");
-            }
-        } catch (FileNotFoundException var14) {
-            throw new PersistenciaException("Archivo inexistente");
-        } catch (IOException e) {
-            throw new PersistenciaException("Error: " + e.getMessage(), e);
-        } finally {
-            try {
-                if (this.archivo != null) {
-                    this.archivo.close();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-
-        }
-
-    }
-
-    public List<Usuario> lista() throws PersistenciaException {
-        List<Usuario> lista = new ArrayList();
-
-        Object var3;
-        try {
-            this.archivo = new RandomAccessFile(this.nomArchivo, "r");
-
-            while(true) {
-                Usuario usuarioLeido = this.leeUsuario();
-                if (this.esUsuarioValido(usuarioLeido)) {
-                    lista.add(usuarioLeido);
-                }
-            }
-        } catch (FileNotFoundException var14) {
-            throw new PersistenciaException("Archivo inexistente");
-        } catch (EOFException var15) {
-            var3 = lista;
-        } catch (IOException e) {
-            throw new PersistenciaException("Error al acceder al archivo", e);
-        } finally {
-            try {
-                if (this.archivo != null) {
-                    this.archivo.close();
-                }
-            } catch (IOException e) {
-                throw new PersistenciaException("Error al cerrar", e);
-            }
-
-        }
-
-        return (List<Usuario>)var3;
-    }
-
-    private static boolean esUsuarioDeTipo(Usuario usuario, String tipo) {
-        return usuario.getTipo() != null && tipo.equalsIgnoreCase(usuario.getTipo().trim());
+        return resultado;
     }
 
     public List<Usuario> listaPorTipo(String tipo) throws PersistenciaException {
-        return (List)this.lista().stream().filter((usuario) -> esUsuarioDeTipo(usuario, tipo)).collect(Collectors.toList());
-    }
-
-    public Usuario obtenPorIdUsuario(String idUsuario) throws PersistenciaException {
-        return this.obten(new Usuario(idUsuario));
+        return lista().stream().filter(u -> u.getTipo() != null && u.getTipo().equalsIgnoreCase(tipo)).collect(Collectors.toList());
     }
 }

@@ -1,29 +1,14 @@
-### IntelliJ IDEA ###
+# compilación y IDE
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
+build/
+dist/
+nbproject/private/
+.idea/
+*.class
 
-### Eclipse ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# copias de seguridad que genera el propio sistema
+respaldos/
+*.v1.bak
+*.tmp
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
-.vscode/
-
-### Mac OS ###
-.DS_Store
+# OJO: los archivos *.dat NO se ignoran a propósito: son la base de datos actual del sistema.
