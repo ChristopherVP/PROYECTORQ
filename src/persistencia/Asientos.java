@@ -96,6 +96,29 @@ public class Asientos extends AccesoAleatorio {
 
     }
 
+    /**
+     * Agrega muchos asientos abriendo el archivo una sola vez. Es la forma rápida de crear los asientos de un viaje:
+     * el método agrega() abre y cierra el archivo por cada asiento.
+     */
+    public void agregaLote(List<Asiento> asientos) throws PersistenciaException {
+        if (asientos == null || asientos.isEmpty()) {
+            return;
+        }
+        try (RandomAccessFile raf = new RandomAccessFile(this.nomArchivo, "rw")) {
+            this.archivo = raf;
+            raf.seek(raf.length());
+            for (Asiento asiento : asientos) {
+                this.escribeAsiento(asiento);
+            }
+        } catch (FileNotFoundException e) {
+            throw new PersistenciaException("Archivo inexistente");
+        } catch (IOException e) {
+            throw new PersistenciaException("Error al guardar los asientos", e);
+        } finally {
+            this.archivo = null;
+        }
+    }
+
     public void actualiza(Asiento asiento) throws PersistenciaException {
         try {
             this.archivo = new RandomAccessFile(this.nomArchivo, "rw");

@@ -86,9 +86,8 @@ public class PantallaConfiguracionInicial extends JFrame {
     }
 
     private void crear() {
-        ResultadoOperacion r = controlador.crearSuperAdministradorInicial(txtLogin.getText(), txtNombre.getText(), txtCedula.getText(),
-                new String(txtClave.getPassword()), new String(txtConfirmar.getPassword()), txtEmail.getText(), txtTelefono.getText(),
-                String.valueOf(cmbPregunta.getEditor().getItem()), txtRespuesta.getText());
+        ResultadoOperacion r = controlador.asegurarAdministradorPrincipal(
+        );
         if (!r.isExito()) {
             Tema.mostrarMensaje(lblMensaje, r.getMensaje(), false);
             return;

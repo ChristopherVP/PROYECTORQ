@@ -1038,17 +1038,17 @@ public class FachadaArchivos implements IFachada {
 
     public void generarAsientosParaViaje(String idViaje, int capacidadBus) throws FachadaException {
         try {
-            System.out.println("\nGenerando " + capacidadBus + " asientos para el viaje " + idViaje + "...");
-
+            // Los ids son únicos por construcción (idViaje + número), así que no hace falta comprobar
+            // duplicados uno por uno; se escriben todos de una vez con el archivo abierto una sola vez.
+            List<Asiento> nuevos = new ArrayList<>(capacidadBus);
             for(int i = 1; i <= capacidadBus; ++i) {
                 String idAsiento = idViaje + "-A" + String.format("%03d", i);
                 String ubicacion = this.determinarUbicacionAsiento(i);
                 Asiento asiento = new Asiento(idAsiento, i, idViaje, ubicacion);
                 asiento.setEstado("Disponible");
-                this.agrega(asiento);
+                nuevos.add(asiento);
             }
-
-            System.out.println("✓ Asientos generados exitosamente para el viaje " + idViaje);
+            this.catalogoAsientos.agregaLote(nuevos);
         } catch (Exception e) {
             throw new FachadaException("Error al generar asientos para el viaje", e);
         }

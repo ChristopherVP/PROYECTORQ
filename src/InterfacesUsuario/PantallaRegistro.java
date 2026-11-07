@@ -2,15 +2,17 @@ package InterfacesUsuario;
 
 import control.ControladorUsuarios;
 import control.ResultadoOperacion;
+import excepciones.Validador;
 import java.awt.BorderLayout;
 import java.awt.Dialog;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
 import java.awt.Window;
-import java.time.LocalDate;
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
@@ -21,31 +23,38 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import objetosServicio.Fecha;
 
-/** Registro público: la persona elige su rol (pasajero o conductor). Los administradores se crean desde dentro de una cuenta de administrador. */
+/**
+ * Registro público de pasajeros y conductores. Cada campo se valida igual que en el registro del sistema Correo:
+ * no deja escribir caracteres inválidos, muestra el error debajo del campo y da foco al primero que falla.
+ */
 public class PantallaRegistro extends JDialog {
+    private static final String SIN_PREGUNTA = "Selecciona una pregunta...";
+
     private final ControladorUsuarios controlador = new ControladorUsuarios();
     private final JRadioButton rbPasajero = new JRadioButton("Soy pasajero", true);
     private final JRadioButton rbConductor = new JRadioButton("Soy conductor");
     private final JTextField txtLogin = Tema.campo(20);
     private final JTextField txtNombre = Tema.campo(20);
     private final JTextField txtCedula = Tema.campo(20);
-    private final JComboBox<Integer> cmbDia = new JComboBox<>();
-    private final JComboBox<String> cmbMes = new JComboBox<>(new String[]{"Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"});
-    private final JComboBox<Integer> cmbAnio = new JComboBox<>();
+    private final JLabel lblProvincia = Tema.etiqueta(" ");
+    private final JTextField txtNacimiento = Tema.campo(20);
     private final JTextField txtDireccion = Tema.campo(20);
     private final JTextField txtTelefono = Tema.campo(20);
     private final JTextField txtEmail = Tema.campo(20);
     private final JPasswordField txtClave = Tema.clave(20);
     private final JPasswordField txtConfirmar = Tema.clave(20);
-    private final JComboBox<String> cmbPregunta = new JComboBox<>(Tema.PREGUNTAS);
+    private final JComboBox<String> cmbPregunta = new JComboBox<>();
     private final JTextField txtRespuesta = Tema.campo(20);
     private final JLabel lblFortaleza = Tema.mensaje();
     private final JLabel lblMensaje = Tema.mensaje();
     private final JLabel lblAyuda = Tema.etiqueta(" ");
-    private JLabel etqNombre;
-    private JLabel etqNacimiento;
-    private JLabel etqDireccion;
-    private JPanel panelNacimiento;
+    private final ValidacionUI.Reglas reglas = new ValidacionUI.Reglas();
+    private final JLabel[] filaNombre = new JLabel[1];
+    private final JLabel[] filaNacimiento = new JLabel[1];
+    private final JLabel[] filaDireccion = new JLabel[1];
+    private final JLabel errNombre = ValidacionUI.etiquetaError();
+    private final JLabel errNacimiento = ValidacionUI.etiquetaError();
+    private final JLabel errDireccion = ValidacionUI.etiquetaError();
     private String loginCreado;
 
     public PantallaRegistro(Window padre) {
@@ -61,32 +70,73 @@ public class PantallaRegistro extends JDialog {
             grupo.add(rb);
             rb.addActionListener(e -> actualizarRol());
         }
-        for (int d = 1; d <= 31; d++) cmbDia.addItem(d);
-        int anio = LocalDate.now().getYear();
-        for (int a = anio - 18; a >= anio - 100; a--) cmbAnio.addItem(a);
-        panelNacimiento = new JPanel(new FlowLayout(FlowLayout.LEFT, 6, 0));
-        panelNacimiento.setOpaque(false);
-        panelNacimiento.add(cmbDia);
-        panelNacimiento.add(cmbMes);
-        panelNacimiento.add(cmbAnio);
-        cmbPregunta.setEditable(true);
+        cmbPregunta.addItem(SIN_PREGUNTA);
+        for (String p : Tema.PREGUNTAS) {
+            cmbPregunta.addItem(p);
+        }
         cmbPregunta.setFont(Tema.fuente(Font.PLAIN, 13f));
+
+        // filtros de escritura
+        ValidacionUI.usuario(txtLogin, 20);
+        ValidacionUI.soloLetras(txtNombre, 50);
+        ValidacionUI.soloDigitos(txtCedula, 10);
+        ValidacionUI.mostrarProvincia(txtCedula, lblProvincia);
+        ValidacionUI.fecha(txtNacimiento);
+        ValidacionUI.limite(txtDireccion, 80);
+        ValidacionUI.celular(txtTelefono);
+        ValidacionUI.correo(txtEmail, 50);
+        ValidacionUI.limite(txtRespuesta, 40);
+        lblProvincia.setForeground(Tema.TEXTO_SUAVE);
+        txtNacimiento.setToolTipText("dd/mm/aaaa (ejemplo: 15/03/2000)");
+
+        JLabel errLogin = ValidacionUI.etiquetaError();
+        JLabel errCedula = ValidacionUI.etiquetaError();
+        JLabel errTelefono = ValidacionUI.etiquetaError();
+        JLabel errEmail = ValidacionUI.etiquetaError();
+        JLabel errClave = ValidacionUI.etiquetaError();
+        JLabel errConfirmar = ValidacionUI.etiquetaError();
+        JLabel errPregunta = ValidacionUI.etiquetaError();
+        JLabel errRespuesta = ValidacionUI.etiquetaError();
 
         JPanel formulario = Tema.panelFormulario();
         int f = 0;
-        Tema.fila(formulario, f++, "Usuario *", txtLogin);
-        etqNombre = Tema.fila(formulario, f++, "Nombre completo *", txtNombre);
-        Tema.fila(formulario, f++, "Cédula *", txtCedula);
-        etqNacimiento = Tema.fila(formulario, f++, "Fecha de nacimiento *", panelNacimiento);
-        etqDireccion = Tema.fila(formulario, f++, "Dirección (opcional)", txtDireccion);
-        Tema.fila(formulario, f++, "Teléfono (opcional)", txtTelefono);
-        Tema.fila(formulario, f++, "Correo (opcional)", txtEmail);
-        Tema.fila(formulario, f++, "Contraseña *", txtClave);
+        f = ValidacionUI.fila(formulario, f, "Usuario *", txtLogin, errLogin);
+        f = ValidacionUI.fila(formulario, f, "Nombre completo *", txtNombre, errNombre, filaNombre);
+        f = ValidacionUI.fila(formulario, f, "Cédula *", txtCedula, errCedula);
+        Tema.fila(formulario, f++, "", lblProvincia);
+        f = ValidacionUI.fila(formulario, f, "Fecha de nacimiento *", txtNacimiento, errNacimiento, filaNacimiento);
+        f = ValidacionUI.fila(formulario, f, "Dirección (opcional)", txtDireccion, errDireccion, filaDireccion);
+        f = ValidacionUI.fila(formulario, f, "Teléfono celular *", txtTelefono, errTelefono);
+        f = ValidacionUI.fila(formulario, f, "Correo *", txtEmail, errEmail);
+        f = ValidacionUI.fila(formulario, f, "Contraseña *", txtClave, errClave);
         Tema.fila(formulario, f++, "", lblFortaleza);
-        Tema.fila(formulario, f++, "Confirmar contraseña *", txtConfirmar);
-        Tema.fila(formulario, f++, "Pregunta de seguridad *", cmbPregunta);
-        Tema.fila(formulario, f++, "Respuesta *", txtRespuesta);
+        f = ValidacionUI.fila(formulario, f, "Confirmar contraseña *", txtConfirmar, errConfirmar);
+        JCheckBox chkMostrar = new JCheckBox("Mostrar contraseñas");
+        chkMostrar.setOpaque(false);
+        chkMostrar.setFont(Tema.fuente(Font.PLAIN, 12f));
+        char eco = txtClave.getEchoChar();
+        chkMostrar.addActionListener(e -> {
+            char c = chkMostrar.isSelected() ? (char) 0 : eco;
+            txtClave.setEchoChar(c);
+            txtConfirmar.setEchoChar(c);
+        });
+        Tema.fila(formulario, f++, "", chkMostrar);
+        f = ValidacionUI.fila(formulario, f, "Pregunta de seguridad *", cmbPregunta, errPregunta);
+        ValidacionUI.fila(formulario, f, "Respuesta *", txtRespuesta, errRespuesta);
         Tema.vincularFortaleza(txtClave, lblFortaleza);
+
+        // reglas, en el orden del formulario
+        reglas.agregar(txtLogin, errLogin, () -> Validador.errorLogin(txtLogin.getText()));
+        reglas.agregar(txtNombre, errNombre, () -> Validador.errorNombre(txtNombre.getText()));
+        reglas.agregar(txtCedula, errCedula, () -> Validador.errorCedula(txtCedula.getText()));
+        reglas.agregar(txtNacimiento, errNacimiento, () -> Validador.errorMayorDeEdad(txtNacimiento.getText()));
+        reglas.agregar(txtTelefono, errTelefono, () -> Validador.errorTelefonoCelular(txtTelefono.getText()));
+        reglas.agregar(txtEmail, errEmail, () -> Validador.errorEmailCuenta(txtEmail.getText()));
+        reglas.agregar(txtClave, errClave, () -> Validador.errorContrasena(new String(txtClave.getPassword())));
+        reglas.agregar(txtConfirmar, errConfirmar, () -> new String(txtClave.getPassword()).equals(new String(txtConfirmar.getPassword()))
+                ? null : "Las contraseñas no coinciden");
+        reglas.agregar(cmbPregunta, errPregunta, () -> cmbPregunta.getSelectedIndex() <= 0 ? "Elige una pregunta de seguridad" : null);
+        reglas.agregar(txtRespuesta, errRespuesta, () -> Validador.errorRespuestaSeguridad(txtRespuesta.getText()));
 
         JPanel roles = new JPanel(new FlowLayout(FlowLayout.LEFT, 18, 4));
         roles.setOpaque(false);
@@ -99,9 +149,9 @@ public class PantallaRegistro extends JDialog {
         lblAyuda.setForeground(Tema.TEXTO_SUAVE);
         arriba.add(lblAyuda, BorderLayout.SOUTH);
 
-        javax.swing.JButton btnCrear = Tema.boton("Crear cuenta", true);
+        JButton btnCrear = Tema.boton("Crear cuenta", true);
         btnCrear.addActionListener(e -> crear());
-        javax.swing.JButton btnCancelar = Tema.boton("Cancelar", false);
+        JButton btnCancelar = Tema.boton("Cancelar", false);
         btnCancelar.addActionListener(e -> dispose());
         getRootPane().setDefaultButton(btnCrear);
         JPanel botones = new JPanel(new FlowLayout(FlowLayout.CENTER, 12, 0));
@@ -126,7 +176,7 @@ public class PantallaRegistro extends JDialog {
         scroll.getVerticalScrollBar().setUnitIncrement(16);
         add(scroll, BorderLayout.CENTER);
         actualizarRol();
-        setPreferredSize(new Dimension(680, 760));
+        setPreferredSize(new Dimension(700, 780));
         pack();
         setLocationRelativeTo(padre);
     }
@@ -137,26 +187,32 @@ public class PantallaRegistro extends JDialog {
 
     private void actualizarRol() {
         boolean pasajero = rbPasajero.isSelected();
-        etqNombre.setVisible(pasajero);
+        filaNombre[0].setVisible(pasajero);
         txtNombre.setVisible(pasajero);
-        etqNacimiento.setVisible(pasajero);
-        panelNacimiento.setVisible(pasajero);
-        etqDireccion.setVisible(pasajero);
+        filaNacimiento[0].setVisible(pasajero);
+        txtNacimiento.setVisible(pasajero);
+        filaDireccion[0].setVisible(pasajero);
         txtDireccion.setVisible(pasajero);
+        reglas.limpiar();
+        Tema.mostrarMensaje(lblMensaje, " ", true);
         lblAyuda.setText(pasajero
-                ? Tema.html(500, "Podrás comprar pasajes con tu billetera. Debes ser mayor de 18 años.")
-                : Tema.html(500, "Tu empresa o el administrador deben haberte registrado como conductor antes. Usa tu misma cédula; tu cuenta quedará <b>pendiente de aprobación</b>."));
+                ? Tema.html(520, "Podrás comprar pasajes con tu billetera. Debes ser mayor de 18 años.")
+                : Tema.html(520, "Tu empresa o el administrador deben haberte registrado como conductor antes. Usa tu misma cédula; tu cuenta quedará <b>pendiente de aprobación</b>."));
         revalidate();
         repaint();
     }
 
     private void crear() {
+        if (!reglas.validar()) {
+            Tema.mostrarMensaje(lblMensaje, "Revisa los campos marcados en rojo.", false);
+            return;
+        }
         String clave = new String(txtClave.getPassword());
         String confirmar = new String(txtConfirmar.getPassword());
-        String pregunta = String.valueOf(cmbPregunta.getEditor().getItem());
+        String pregunta = String.valueOf(cmbPregunta.getSelectedItem());
         ResultadoOperacion r;
         if (rbPasajero.isSelected()) {
-            Fecha nacimiento = new Fecha((Integer) cmbDia.getSelectedItem(), cmbMes.getSelectedIndex() + 1, (Integer) cmbAnio.getSelectedItem());
+            Fecha nacimiento = Validador.fechaDesdeTexto(txtNacimiento.getText());
             r = controlador.registrarPasajero(txtLogin.getText(), txtNombre.getText(), txtCedula.getText(), clave, confirmar, txtEmail.getText(),
                     txtTelefono.getText(), txtDireccion.getText(), nacimiento, false, pregunta, txtRespuesta.getText());
         } else {

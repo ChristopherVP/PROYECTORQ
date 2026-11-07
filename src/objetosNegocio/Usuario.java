@@ -28,6 +28,8 @@ public class Usuario {
     private String idPerfil;
     private int intentosRecuperacion;
     private long bloqueoHasta;
+    private String cargo = "";
+    private boolean clavePendiente;
 
     public Usuario() {
     }
@@ -72,6 +74,18 @@ public class Usuario {
     public void setIntentosRecuperacion(int intentosRecuperacion) { this.intentosRecuperacion = intentosRecuperacion; }
     public long getBloqueoHasta() { return bloqueoHasta; }
     public void setBloqueoHasta(long bloqueoHasta) { this.bloqueoHasta = bloqueoHasta; }
+
+    /** Cargo del colaborador (ver {@link Cargo}); vacío para pasajeros y conductores. */
+    public String getCargo() { return cargo; }
+    public void setCargo(String cargo) { this.cargo = cargo == null ? "" : cargo; }
+    /** true mientras la persona deba cambiar su contraseña temporal en el próximo ingreso. */
+    public boolean isClavePendiente() { return clavePendiente; }
+    public void setClavePendiente(boolean clavePendiente) { this.clavePendiente = clavePendiente; }
+
+    /** Cuenta fundadora: la crea el sistema, no se puede eliminar ni desactivar y es la única que crea administradores. */
+    public boolean esAdministradorPrincipal() {
+        return getRol() == Rol.ADMINISTRADOR && Cargo.ADMINISTRADOR_PRINCIPAL.getEtiqueta().equalsIgnoreCase(cargo);
+    }
 
     public void definirContrasena(String contrasenaPlana) {
         this.contrasena = Seguridad.hash(contrasenaPlana);

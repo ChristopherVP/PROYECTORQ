@@ -5,7 +5,27 @@
 
 package excepciones;
 
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.util.Arrays;
+import java.util.List;
+import objetosServicio.Fecha;
+
 public class Validador {
+    /** Proveedores de correo aceptados en las cuentas de usuario (misma lista que el sistema Correo). */
+    private static final List<String> DOMINIOS_CORREO = Arrays.asList(
+            "@gmail.com", "@outlook.com", "@hotmail.com", "@live.com", "@msn.com",
+            "@yahoo.com", "@yahoo.es", "@yahoo.mx", "@icloud.com", "@me.com", "@mac.com",
+            "@proton.me", "@protonmail.com", "@zoho.com", "@zohomail.com",
+            "@gmx.com", "@gmx.net", "@aol.com", "@uce.edu.ec");
+
+    /** Índice = código de provincia de la cédula (01-24). */
+    private static final String[] PROVINCIAS = {
+            "Desconocida", "Azuay", "Bolívar", "Cañar", "Carchi", "Cotopaxi", "Chimborazo", "El Oro",
+            "Esmeraldas", "Guayas", "Imbabura", "Loja", "Los Ríos", "Manabí", "Morona Santiago", "Napo",
+            "Pastaza", "Pichincha", "Tungurahua", "Zamora Chinchipe", "Galápagos", "Sucumbíos", "Orellana",
+            "Santo Domingo de los Tsáchilas", "Santa Elena"};
+
     private static String mensajeErrorCedula = "";
     private static String mensajeErrorEmail = "";
     private static String mensajeErrorRuc = "";
@@ -51,36 +71,141 @@ public class Validador {
         return error == null;
     }
 
-    /** Email opcional: vacío es válido; si hay texto debe tener formato correcto. Devuelve null o el mensaje. */
+    /** Email opcional: vacío es válido; si hay texto debe ser minúsculas, con formato y dominio permitido. */
     public static String errorEmailOpcional(String email) {
         if (email == null || email.trim().isEmpty()) {
             return null;
         }
-        if (!validarEmail(email.trim())) {
-            return mensajeErrorEmail;
-        }
-        if (email.trim().length() > 50) {
-            return "El email no puede superar los 50 caracteres";
-        }
-        return null;
+        return errorEmailCuenta(email);
     }
 
-    /** Teléfono opcional: vacío es válido; si hay texto, 9 o 10 dígitos. */
+    /** Email obligatorio de una cuenta: formato, minúsculas, máximo 50 caracteres y dominio permitido. */
+    public static String errorEmailCuenta(String email) {
+        if (email == null || email.trim().isEmpty()) {
+            return "El correo es obligatorio";
+        }
+        String e = email.trim();
+        if (!validarEmail(e)) {
+            return mensajeErrorEmail;
+        }
+        if (e.length() > 50) {
+            return "El correo no puede superar los 50 caracteres";
+        }
+        for (String dominio : DOMINIOS_CORREO) {
+            if (e.endsWith(dominio)) {
+                return null;
+            }
+        }
+        return "Dominio de correo no permitido. Usa Gmail, Outlook, Hotmail, Yahoo, iCloud, Proton, Zoho, GMX, AOL o @uce.edu.ec";
+    }
+
+    /** Teléfono opcional: vacío es válido; si hay texto debe ser un celular ecuatoriano (09 + 8 dígitos). */
     public static String errorTelefonoOpcional(String telefono) {
         if (telefono == null || telefono.trim().isEmpty()) {
             return null;
         }
-        return validarTelefono(telefono) ? null : "El teléfono debe tener 9 o 10 dígitos";
+        return errorTelefonoCelular(telefono);
     }
 
+    /** Celular ecuatoriano obligatorio: exactamente 10 dígitos y empieza con 09. */
+    public static String errorTelefonoCelular(String telefono) {
+        if (telefono == null || telefono.trim().isEmpty()) {
+            return "El teléfono es obligatorio";
+        }
+        String t = telefono.trim();
+        if (!t.matches("\\d{10}")) {
+            return "El teléfono debe tener exactamente 10 dígitos numéricos";
+        }
+        if (!t.startsWith("09")) {
+            return "El teléfono debe comenzar con 09";
+        }
+        return null;
+    }
+
+    /** Nombre completo: solo letras y espacios, al menos nombre y apellido, entre 5 y 50 caracteres. */
     public static String errorNombre(String nombre) {
         if (nombre == null || nombre.trim().isEmpty()) {
             return "El nombre es obligatorio";
         }
-        if (!nombre.trim().matches("^\\p{L}[\\p{L} .'-]{2,49}$")) {
-            return "El nombre debe tener entre 3 y 50 caracteres y solo letras o espacios";
+        String n = nombre.trim();
+        if (!n.matches("[\\p{L} ]+")) {
+            return "El nombre solo puede contener letras y espacios";
+        }
+        if (n.length() < 5 || n.length() > 50) {
+            return "El nombre debe tener entre 5 y 50 caracteres";
+        }
+        if (!n.matches("\\p{L}+( +\\p{L}+)+")) {
+            return "Escribe tu nombre y apellido";
         }
         return null;
+    }
+
+    /** Nombre de la provincia según los dos primeros dígitos de la cédula (o vacío si aún no se puede saber). */
+    public static String provinciaPorCedula(String cedula) {
+        if (cedula == null || cedula.length() < 2 || !cedula.substring(0, 2).matches("\\d{2}")) {
+            return "";
+        }
+        int codigo = Integer.parseInt(cedula.substring(0, 2));
+        if (codigo >= 1 && codigo <= 24) {
+            return PROVINCIAS[codigo];
+        }
+        return codigo == 30 ? "Ecuatoriano en el exterior" : "Código de provincia inválido";
+    }
+
+    /**
+     * Valida una fecha escrita como dd/mm/aaaa (día real del mes, años bisiestos incluidos).
+     * Devuelve null si es válida o el mensaje del problema.
+     */
+    public static String errorFormatoFecha(String texto) {
+        if (texto == null || texto.trim().isEmpty()) {
+            return "La fecha de nacimiento es obligatoria";
+        }
+        if (!texto.trim().matches("\\d{2}/\\d{2}/\\d{4}")) {
+            return "Usa el formato dd/mm/aaaa (ejemplo: 15/03/2000)";
+        }
+        String[] p = texto.trim().split("/");
+        int dia = Integer.parseInt(p[0]);
+        int mes = Integer.parseInt(p[1]);
+        int anio = Integer.parseInt(p[2]);
+        if (mes < 1 || mes > 12) {
+            return "Mes inválido: debe estar entre 1 y 12";
+        }
+        try {
+            LocalDate.of(anio, mes, dia);
+        } catch (DateTimeException e) {
+            return "Ese día no existe en el mes indicado";
+        }
+        return null;
+    }
+
+    /** Fecha dd/mm/aaaa de una persona mayor de edad (18 a 120 años, no futura). Devuelve null si es válida. */
+    public static String errorMayorDeEdad(String texto) {
+        String problema = errorFormatoFecha(texto);
+        if (problema != null) {
+            return problema;
+        }
+        String[] p = texto.trim().split("/");
+        LocalDate nacimiento = LocalDate.of(Integer.parseInt(p[2]), Integer.parseInt(p[1]), Integer.parseInt(p[0]));
+        if (nacimiento.isAfter(LocalDate.now())) {
+            return "La fecha de nacimiento no puede ser futura";
+        }
+        int edad = java.time.Period.between(nacimiento, LocalDate.now()).getYears();
+        if (edad < 18) {
+            return "Debes ser mayor de edad (18 años) para crear una cuenta";
+        }
+        if (edad > 120) {
+            return "La fecha de nacimiento no es válida";
+        }
+        return null;
+    }
+
+    /** Convierte "dd/mm/aaaa" en Fecha; devuelve null si el texto no es una fecha válida. */
+    public static Fecha fechaDesdeTexto(String texto) {
+        if (errorFormatoFecha(texto) != null) {
+            return null;
+        }
+        String[] p = texto.trim().split("/");
+        return new Fecha(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2]));
     }
 
     public static String errorLogin(String login) {

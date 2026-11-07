@@ -13,16 +13,24 @@ public final class Navegador {
     private Navegador() {
     }
 
-    /** Primer arranque: si no existe ningún administrador general se pide crearlo; si no, inicio de sesión. */
+    /** El administrador principal ya lo crea el sistema al arrancar (InicializadorSistema), así que siempre se empieza en el login. */
     public static void iniciar() {
-        if (!new ControladorUsuarios().existeSuperAdministrador()) {
-            new PantallaConfiguracionInicial().setVisible(true);
-        } else {
-            new PantallaInicioSesion().setVisible(true);
-        }
+        new PantallaInicioSesion().setVisible(true);
     }
 
     public static void abrirSesion(Usuario usuario, Window origen) {
+        if (usuario.isClavePendiente()) {
+            DialogoCambioClave cambio = new DialogoCambioClave(origen, usuario);
+            cambio.setVisible(true);
+            if (!cambio.fueCambiada()) {
+                return; // sin cambiar la contraseña temporal no se entra: se queda en el login
+            }
+            Object datos = new ControladorUsuarios().obtener(usuario.getIdUsuario()).getDatos();
+            if (datos instanceof Usuario actualizado) {
+                refrescar(usuario, actualizado);
+            }
+            usuario.setClavePendiente(false);
+        }
         if (origen != null) {
             origen.dispose();
         }

@@ -26,7 +26,7 @@ import javax.swing.Timer;
 public class SplashRQ extends JWindow {
     private static final int ANCHO = 760;
     private static final int ALTO = 420;
-    private static final long DURACION_MINIMA_MS = 4200;
+    private static final long DURACION_MINIMA_MS = 1500;
     private static final long CAMBIO_FRASE_MS = 1500;
 
     private static final String[][] FRASES = {

@@ -270,26 +270,16 @@ public class Empresas extends AccesoAleatorio {
         Object var3;
         try {
             this.archivo = new RandomAccessFile(this.nomArchivo, "r");
-            System.out.println("=== LEYENDO ARCHIVO ===");
-            System.out.println("Tamaño del archivo: " + this.archivo.length() + " bytes");
-            System.out.println("Registros totales: " + this.archivo.length() / (long)this.tamRegistro);
 
             while(true) {
-                long posicion = this.archivo.getFilePointer();
                 Empresa empresaLeida = this.leeEmpresa();
-                System.out.println("Posición " + posicion + ": ID='" + empresaLeida.getIdEmpresa() + "'");
                 if (this.esEmpresaValida(empresaLeida)) {
                     lista.add(empresaLeida);
-                    System.out.println("  -> Empresa válida agregada a la lista");
-                } else {
-                    System.out.println("  -> Empresa borrada, no se agrega");
                 }
             }
         } catch (FileNotFoundException var14) {
             throw new PersistenciaException("Archivo inexistente");
         } catch (EOFException var15) {
-            System.out.println("Total empresas válidas en lista: " + lista.size());
-            System.out.println("=======================\n");
             var3 = lista;
         } catch (IOException e) {
             throw new PersistenciaException("Error al acceder al archivo", e);

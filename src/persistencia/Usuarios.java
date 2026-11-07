@@ -6,6 +6,7 @@ import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import objetosNegocio.Cargo;
 import objetosNegocio.Empresa;
 import objetosNegocio.Rol;
 import objetosNegocio.Usuario;
@@ -17,8 +18,9 @@ import objetosServicio.Seguridad;
  * pregunta, hash de respuesta, idPerfil, intentos de recuperación y bloqueo.
  */
 public class Usuarios extends AccesoAleatorio {
-    private static final int CARACTERES = 10 + 20 + 50 + 15 + 80 + 50 + 20 + 20 + 10 + 20 + 80 + 80 + 10;
-    public static final int TAM_REGISTRO = CARACTERES * 2 + 12 + 4 + 8;
+    private static final int CARACTERES = 10 + 20 + 50 + 15 + 80 + 50 + 20 + 20 + 10 + 20 + 80 + 80 + 10 + Cargo.LONGITUD_MAXIMA;
+    /** Fecha (12) + intentos (4) + bloqueo (8) + clave pendiente (4). */
+    public static final int TAM_REGISTRO = CARACTERES * 2 + 12 + 4 + 8 + 4;
 
     public Usuarios(String nomArchivo) {
         super(nomArchivo, TAM_REGISTRO);
@@ -41,8 +43,10 @@ public class Usuarios extends AccesoAleatorio {
         u.setPreguntaSeguridad(leeString(80));
         u.setRespuestaSeguridad(leeString(80));
         u.setIdPerfil(leeString(10));
+        u.setCargo(leeString(Cargo.LONGITUD_MAXIMA));
         u.setIntentosRecuperacion(archivo.readInt());
         u.setBloqueoHasta(archivo.readLong());
+        u.setClavePendiente(archivo.readInt() == 1);
         return u;
     }
 
@@ -61,8 +65,10 @@ public class Usuarios extends AccesoAleatorio {
         escribeString(u.getPreguntaSeguridad(), 80);
         escribeString(u.getRespuestaSeguridad(), 80);
         escribeString(u.getIdPerfil(), 10);
+        escribeString(u.getCargo(), Cargo.LONGITUD_MAXIMA);
         archivo.writeInt(u.getIntentosRecuperacion());
         archivo.writeLong(u.getBloqueoHasta());
+        archivo.writeInt(u.isClavePendiente() ? 1 : 0);
     }
 
     private static boolean esValido(Usuario u) {
@@ -86,6 +92,9 @@ public class Usuarios extends AccesoAleatorio {
         Rol rol = u.getRol();
         if (rol == null) {
             throw new PersistenciaException("Rol de usuario inválido: " + u.getTipo());
+        }
+        if (u.getCargo() != null && u.getCargo().length() > Cargo.LONGITUD_MAXIMA) {
+            throw new PersistenciaException("El cargo no puede superar " + Cargo.LONGITUD_MAXIMA + " caracteres");
         }
         if (rol == Rol.OPERADOR && !u.tieneEmpresa()) {
             throw new PersistenciaException("Los operadores deben pertenecer a una empresa");

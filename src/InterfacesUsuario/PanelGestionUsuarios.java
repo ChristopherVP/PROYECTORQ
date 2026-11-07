@@ -37,7 +37,7 @@ public class PanelGestionUsuarios extends JPanel {
     private final String tipoFiltro;
     private final JTextField txtBuscar = Tema.campo(18);
     private final JLabel lblResumen = Tema.etiqueta(" ");
-    private final DefaultTableModel modelo = new DefaultTableModel(new String[]{"ID", "Usuario", "Nombre", "Cédula", "Correo", "Rol", "Empresa", "Estado"}, 0) {
+    private final DefaultTableModel modelo = new DefaultTableModel(new String[]{"ID", "Usuario", "Nombre", "Cédula", "Correo", "Rol", "Cargo", "Empresa", "Estado"}, 0) {
         @Override
         public boolean isCellEditable(int r, int c) {
             return false;
@@ -85,7 +85,7 @@ public class PanelGestionUsuarios extends JPanel {
 
         Tema.tabla(tabla);
         tabla.setSelectionMode(javax.swing.ListSelectionModel.SINGLE_SELECTION);
-        tabla.getColumnModel().getColumn(7).setCellRenderer(new DefaultTableCellRenderer() {
+        tabla.getColumnModel().getColumn(8).setCellRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable tb, Object v, boolean sel, boolean foco, int fila, int col) {
                 Component c = super.getTableCellRendererComponent(tb, v, sel, foco, fila, col);
@@ -126,7 +126,8 @@ public class PanelGestionUsuarios extends JPanel {
                 }
                 filas.add(u);
                 String empresa = u.tieneEmpresa() ? empresas.getOrDefault(u.getEmpresa().getIdEmpresa(), u.getEmpresa().getIdEmpresa()) : "(plataforma)";
-                modelo.addRow(new Object[]{u.getIdUsuario(), u.getLogin(), u.getNombre(), u.getCedula(), u.getEmail(), u.getTipo(), empresa, u.getEstado()});
+                modelo.addRow(new Object[]{u.getIdUsuario(), u.getLogin(), u.getNombre(), u.getCedula(), u.getEmail(), u.getTipo(),
+                        u.getCargo() == null || u.getCargo().isEmpty() ? "—" : u.getCargo(), empresa, u.getEstado()});
                 if (Usuario.ESTADO_PENDIENTE.equals(u.getEstado())) {
                     pendientes++;
                 }

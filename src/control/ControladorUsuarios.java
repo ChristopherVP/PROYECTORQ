@@ -10,11 +10,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import objetosNegocio.Cargo;
 import objetosNegocio.Conductor;
 import objetosNegocio.Empresa;
 import objetosNegocio.Pasajero;
 import objetosNegocio.Rol;
 import objetosNegocio.Usuario;
+import objetosServicio.ConfiguracionAdmin;
 import objetosServicio.Fecha;
 import objetosServicio.Seguridad;
 import persistencia.Conductores;
@@ -82,22 +84,39 @@ public class ControladorUsuarios {
 
     // ---------------------------------------------------------------- altas
 
-    /** Crea el primer super administrador. Solo funciona mientras no exista ninguno. */
-    public synchronized ResultadoOperacion crearSuperAdministradorInicial(String login, String nombre, String cedula, String clave,
-                                                                          String confirmar, String email, String telefono, String pregunta, String respuesta) {
-        if (existeSuperAdministrador()) {
-            return error("Ya existe un administrador. Inicia sesión con su cuenta.");
-        }
+    /**
+     * Garantiza que exista el administrador principal (cargo "Administrador principal"). Si no existe lo crea
+     * con el usuario y la contraseña de {@link ConfiguracionAdmin}; con la contraseña temporal por defecto
+     * queda obligado a cambiarla en su primer ingreso. Si ya existe no toca nada.
+     */
+    public synchronized ResultadoOperacion asegurarAdministradorPrincipal() {
         try {
-            String problema = validarCuenta(login, nombre, cedula, clave, confirmar, email, telefono, pregunta, respuesta, true, null);
-            if (problema != null) {
-                return error(problema);
+            for (Usuario existente : usuarios.lista()) {
+                if (existente.esAdministradorPrincipal()) {
+                    return ok("El administrador principal ya existe", existente);
+                }
             }
-            Usuario u = nuevoUsuario(login, nombre, cedula, clave, email, telefono, Rol.ADMINISTRADOR, Usuario.ESTADO_ACTIVO);
-            u.setPreguntaSeguridad(pregunta.trim());
-            u.definirRespuestaSeguridad(respuesta);
+            String login = ConfiguracionAdmin.usuarioInicial();
+            if (Validador.errorLogin(login) != null) {
+                login = ConfiguracionAdmin.USUARIO_POR_DEFECTO;
+            }
+            if (usuarios.buscaPorLogin(login) != null) {
+                return error("No se pudo crear el administrador principal: el usuario \"" + login + "\" ya está en uso");
+            }
+            String clave = ConfiguracionAdmin.passwordInicial();
+            boolean cambioPendiente = ConfiguracionAdmin.usaPasswordPorDefecto();
+            String aviso = "";
+            if (Validador.errorContrasena(clave) != null) {
+                clave = ConfiguracionAdmin.passwordTemporal();
+                cambioPendiente = true;
+                aviso = " (la contraseña de " + ConfiguracionAdmin.VARIABLE_PASSWORD + " no cumple la política: se usó la temporal)";
+            }
+            Usuario u = nuevoUsuario(login, ConfiguracionAdmin.NOMBRE_ADMIN, ConfiguracionAdmin.CEDULA_RESERVADA, clave, "", "",
+                    Rol.ADMINISTRADOR, Usuario.ESTADO_ACTIVO);
+            u.setCargo(Cargo.ADMINISTRADOR_PRINCIPAL.getEtiqueta());
+            u.setClavePendiente(cambioPendiente);
             usuarios.agrega(u);
-            return ok("Administrador creado correctamente", u);
+            return ok("Administrador principal creado" + aviso, u);
         } catch (PersistenciaException e) {
             return error(e.getMessage());
         }
@@ -106,7 +125,7 @@ public class ControladorUsuarios {
     public synchronized ResultadoOperacion registrarPasajero(String login, String nombre, String cedula, String clave, String confirmar,
                                                              String email, String telefono, String direccion, Fecha nacimiento, boolean discapacidad, String pregunta, String respuesta) {
         try {
-            String problema = validarCuenta(login, nombre, cedula, clave, confirmar, email, telefono, pregunta, respuesta, true, null);
+            String problema = validarCuenta(login, nombre, cedula, clave, confirmar, email, telefono, pregunta, respuesta, true, null, true);
             if (problema == null) {
                 problema = validarMayorDeEdad(nacimiento);
             }
@@ -168,12 +187,11 @@ public class ControladorUsuarios {
                     return error("Ese conductor ya tiene una cuenta creada.");
                 }
             }
-            String problema = validarCuenta(login, ficha.getNombre(), cedula, clave, confirmar, email, telefono, pregunta, respuesta, true, "conductor");
+            String problema = validarCuenta(login, ficha.getNombre(), cedula, clave, confirmar, email, telefono, pregunta, respuesta, true, "conductor", true);
             if (problema != null) {
                 return error(problema);
             }
-            Usuario u = nuevoUsuario(login, ficha.getNombre(), cedula, clave, email,
-                    (telefono == null || telefono.trim().isEmpty()) ? vacioSiNulo(ficha.getTelefono()) : telefono, Rol.CONDUCTOR, Usuario.ESTADO_PENDIENTE);
+            Usuario u = nuevoUsuario(login, ficha.getNombre(), cedula, clave, email, telefono, Rol.CONDUCTOR, Usuario.ESTADO_PENDIENTE);
             u.setEmpresa(ficha.getEmpresa());
             u.setIdPerfil(ficha.getIdConductor());
             u.setPreguntaSeguridad(pregunta.trim());
@@ -185,8 +203,11 @@ public class ControladorUsuarios {
         }
     }
 
-    /** Alta de cuentas Administrador u Operador desde dentro de una cuenta de administrador. */
-    public synchronized ResultadoOperacion crearUsuarioAdministrativo(Usuario actor, String tipo, String login, String nombre, String cedula,
+    /**
+     * Alta de colaboradores (Administrador u Operador) con su cargo. Solo el administrador principal crea administradores;
+     * cualquier administrador activo puede crear operadores. La contraseña es temporal: la persona debe cambiarla al ingresar.
+     */
+    public synchronized ResultadoOperacion crearUsuarioAdministrativo(Usuario actor, String tipo, String cargo, String login, String nombre, String cedula,
                                                                       String clave, String email, String telefono, String idEmpresa, String pregunta, String respuesta) {
         try {
             ResultadoOperacion permiso = exigirAdministrador(actor);
@@ -197,6 +218,13 @@ public class ControladorUsuarios {
             if (rol != Rol.ADMINISTRADOR && rol != Rol.OPERADOR) {
                 return error("Desde aquí solo se pueden crear cuentas de Administrador u Operador");
             }
+            if (rol == Rol.ADMINISTRADOR && !actor.esAdministradorPrincipal()) {
+                return error("Solo el administrador principal puede crear administradores");
+            }
+            Cargo cargoElegido = Cargo.desdeEtiqueta(cargo);
+            if (cargoElegido == null || cargoElegido.getRol() != rol || cargoElegido == Cargo.ADMINISTRADOR_PRINCIPAL) {
+                return error("Selecciona un cargo válido para el rol " + rol.getEtiqueta());
+            }
             String empresaFinal = actor.tieneEmpresa() ? actor.getEmpresa().getIdEmpresa() : (idEmpresa == null ? "" : idEmpresa.trim());
             if (rol == Rol.OPERADOR && empresaFinal.isEmpty()) {
                 return error("El operador debe pertenecer a una empresa");
@@ -205,12 +233,14 @@ public class ControladorUsuarios {
                 return error("La empresa seleccionada no existe");
             }
             boolean hayPregunta = pregunta != null && !pregunta.trim().isEmpty();
-            String problema = validarCuenta(login, nombre, cedula, clave, clave, email, telefono, pregunta, respuesta, hayPregunta, null);
+            String problema = validarCuenta(login, nombre, cedula, clave, clave, email, telefono, pregunta, respuesta, hayPregunta, null, false);
             if (problema != null) {
                 return error(problema);
             }
             Usuario u = nuevoUsuario(login, nombre, cedula, clave, email, telefono, rol, Usuario.ESTADO_ACTIVO);
             u.setEmpresa(empresaFinal.isEmpty() ? null : new Empresa(empresaFinal));
+            u.setCargo(cargoElegido.getEtiqueta());
+            u.setClavePendiente(true);
             if (hayPregunta) {
                 u.setPreguntaSeguridad(pregunta.trim());
                 u.definirRespuestaSeguridad(respuesta);
@@ -332,6 +362,7 @@ public class ControladorUsuarios {
                 return error("Respuesta incorrecta. Te quedan " + (MAX_INTENTOS - intentos) + " intento(s).");
             }
             u.definirContrasena(nueva);
+            u.setClavePendiente(false);
             u.setIntentosRecuperacion(0);
             u.setBloqueoHasta(0);
             usuarios.actualiza(u);
@@ -400,6 +431,7 @@ public class ControladorUsuarios {
                 return error(problema);
             }
             u.definirContrasena(nueva);
+            u.setClavePendiente(false);
             usuarios.actualiza(u);
             return ok("Contraseña actualizada", u);
         } catch (PersistenciaException e) {
@@ -434,7 +466,7 @@ public class ControladorUsuarios {
 
     // ---------------------------------------------------------------- administración de usuarios
 
-    public synchronized ResultadoOperacion actualizarUsuarioAdministrativo(Usuario actor, String idUsuario, String nombre, String email,
+    public synchronized ResultadoOperacion actualizarUsuarioAdministrativo(Usuario actor, String idUsuario, String cargo, String nombre, String email,
                                                                            String telefono, String estado, String nuevaClave) {
         try {
             Usuario objetivo = usuarios.obtenPorIdUsuario(idUsuario);
@@ -442,7 +474,15 @@ public class ControladorUsuarios {
             if (!permiso.isExito()) {
                 return permiso;
             }
-            String problema = objetivo.getRol() == Rol.CONDUCTOR ? null : Validador.errorNombre(nombre);
+            String problema = exigirPrincipalSiEsAdministrador(actor, objetivo);
+            Cargo cargoNuevo = null;
+            if (problema == null && !objetivo.esAdministradorPrincipal() && objetivo.getRol().esAdministrativo()) {
+                cargoNuevo = Cargo.desdeEtiqueta(cargo);
+                if (cargoNuevo == null || cargoNuevo.getRol() != objetivo.getRol() || cargoNuevo == Cargo.ADMINISTRADOR_PRINCIPAL) {
+                    problema = "Selecciona un cargo válido para el rol " + objetivo.getTipo();
+                }
+            }
+            if (problema == null && objetivo.getRol() != Rol.CONDUCTOR) problema = Validador.errorNombre(nombre);
             if (problema == null) problema = Validador.errorEmailOpcional(email);
             if (problema == null) problema = Validador.errorTelefonoOpcional(telefono);
             if (problema == null) problema = verificarEmailUnico(email, objetivo.getIdUsuario());
@@ -463,8 +503,13 @@ public class ControladorUsuarios {
             objetivo.setEmail(vacioSiNulo(email).trim());
             objetivo.setTelefono(vacioSiNulo(telefono).trim());
             objetivo.setEstado(estado);
+            if (cargoNuevo != null) {
+                objetivo.setCargo(cargoNuevo.getEtiqueta());
+            }
             if (nuevaClave != null && !nuevaClave.isEmpty()) {
                 objetivo.definirContrasena(nuevaClave);
+                // una clave puesta por otra persona es temporal: quien la recibe debe cambiarla
+                objetivo.setClavePendiente(!objetivo.getIdUsuario().equals(actor.getIdUsuario()));
                 objetivo.setIntentosRecuperacion(0);
                 objetivo.setBloqueoHasta(0);
             }
@@ -482,6 +527,10 @@ public class ControladorUsuarios {
             ResultadoOperacion permiso = verificarAlcance(actor, objetivo);
             if (!permiso.isExito()) {
                 return permiso;
+            }
+            String sinPermiso = exigirPrincipalSiEsAdministrador(actor, objetivo);
+            if (sinPermiso != null) {
+                return error(sinPermiso);
             }
             String motivo = motivoNoDesactivable(actor, objetivo);
             if (motivo != null) {
@@ -538,7 +587,18 @@ public class ControladorUsuarios {
         return ok("OK", null);
     }
 
+    /** Las cuentas de administrador solo las gestiona el administrador principal. */
+    private String exigirPrincipalSiEsAdministrador(Usuario actor, Usuario objetivo) {
+        if (objetivo.getRol() == Rol.ADMINISTRADOR && !actor.esAdministradorPrincipal()) {
+            return "Solo el administrador principal puede modificar o eliminar cuentas de administrador";
+        }
+        return null;
+    }
+
     private String motivoNoDesactivable(Usuario actor, Usuario objetivo) throws PersistenciaException {
+        if (objetivo.esAdministradorPrincipal()) {
+            return "El administrador principal no se puede desactivar ni eliminar";
+        }
         if (actor.getIdUsuario() != null && actor.getIdUsuario().equals(objetivo.getIdUsuario())) {
             return "No puedes desactivar o eliminar tu propia cuenta";
         }
@@ -553,14 +613,14 @@ public class ControladorUsuarios {
 
     /** Valida los datos comunes de una cuenta nueva y comprueba unicidad de usuario, cédula y correo. */
     private String validarCuenta(String login, String nombre, String cedula, String clave, String confirmar, String email, String telefono,
-                                 String pregunta, String respuesta, boolean exigirPregunta, String rolEspecial) throws PersistenciaException {
+                                 String pregunta, String respuesta, boolean exigirPregunta, String rolEspecial, boolean exigirContacto) throws PersistenciaException {
         String problema = Validador.errorLogin(login);
         if (problema == null && !"conductor".equals(rolEspecial)) problema = Validador.errorNombre(nombre);
         if (problema == null) problema = Validador.errorCedula(cedula);
         if (problema == null) problema = Validador.errorContrasena(clave);
         if (problema == null && (confirmar == null || !clave.equals(confirmar))) problema = "Las contraseñas no coinciden";
-        if (problema == null) problema = Validador.errorEmailOpcional(email);
-        if (problema == null) problema = Validador.errorTelefonoOpcional(telefono);
+        if (problema == null) problema = exigirContacto ? Validador.errorEmailCuenta(email) : Validador.errorEmailOpcional(email);
+        if (problema == null) problema = exigirContacto ? Validador.errorTelefonoCelular(telefono) : Validador.errorTelefonoOpcional(telefono);
         if (problema == null && exigirPregunta) {
             problema = Validador.errorPreguntaSeguridad(pregunta);
             if (problema == null) problema = Validador.errorRespuestaSeguridad(respuesta);
